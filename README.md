@@ -1,6 +1,7 @@
 # Hotel-Kong-Arthur
 
-Gruppe deltager
+Gruppe deltager:
+
 Kenadid
 Jonas
 Jazmin
