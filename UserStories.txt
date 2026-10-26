@@ -1,5 +1,7 @@
 Receptionist - "Som receptionist ønsker jeg et system som kan hjælpe mig med den daglige drift, dvs. et bookingsystem med overblik over bookede, ikke bookede hotelværelse, rene eller urene. Derudover også hvornår der incheckning og udcheckning".
 
+Acceptkriterier - Booking gennemføres med navn, telefon, adresse, land, passport. Flueben eller Kryds ved rengjorte værelser. Ind- og Udchecknings dato og klokkeslæt.
+
 Hotel administrator - "Jeg ønsker et fuldkomment overblik over den daglige drift på hotellet. Jeg vil gerne bede om informationer som receptionisten skal håndterer såsom gæsteliste. Jeg vil dog også gerne have en integreret vagtplan, et sted til modtagelse af faktureringer, kvalitetssikring (kundeservice), og et sted med evt. klager.
 
 Management - "Jeg kunne godt tænke mig et system som indeholder hotellets budget og udgiftsposter. En vagtplan, en kommunikations overgang mellem markedsføringsholdet og management. Overblik over alle forholdne på hotellet, såsom hvornår der skal tjekkes op på forskellige ift. infrastruktur på hotellet, såsom kig på vandrør mv.
