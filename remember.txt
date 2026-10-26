@@ -1,3 +1,3 @@
 Datasæt:
 
-Datasættet er renset fra 5.379, grundet det er summen af dage og er irrelevant.
+Datasættet er renset fra 5.379, grundet det er summen af dage og er irrelevant (Sum af days).
