@@ -1,0 +1,192 @@
+openapi: 3.0.3
+info:
+  title: Hotel Kong Arthur - Booking API
+  description: |
+    REST API til håndtering af hotelbookinger. Bygget efter en 3-lags arkitektur
+    med præsentationslag (REST), forretningslogiklag (tjenester) og dataagilag (MySQL).
+    Hotellets nuværende booking system kan skrive (POST/PUT/DELETE) til dette API.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api
+    description: Lokal udvikling
+  - url: http://backend:3000/api
+    description: Docker internt netværk
+tags:
+  - name: bookings
+    description: Administration af hotelbookinger
+paths:
+  /bookings:
+    get:
+      tags: [bookings]
+      summary: Hent alle bookinger
+      operationId: getAllBookings
+      responses:
+        '200':
+          description: En liste af bookinger
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+    post:
+      tags: [bookings]
+      summary: Opret en ny booking
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingInput'
+      responses:
+        '201':
+          description: Booking oprettet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          description: Valideringsfejl
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /bookings/{id}:
+    get:
+      tags: [bookings]
+      summary: Hent en booking efter id
+      operationId: getBookingById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Booking ID
+      responses:
+        '200':
+          description: Booking fundet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          description: Booking ikke fundet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [bookings]
+      summary: Opdater en booking
+      operationId: updateBooking
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Booking ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingInput'
+      responses:
+        '200':
+          description: Booking opdateret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          description: Valideringsfejl
+        '404':
+          description: Booking ikke fundet
+    delete:
+      tags: [bookings]
+      summary: Slet en booking
+      operationId: deleteBooking
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Booking ID
+      responses:
+        '204':
+          description: Booking slettet
+        '404':
+          description: Booking ikke fundet
+components:
+  schemas:
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        guestName:
+          type: string
+          example: "Jens Hansen"
+        email:
+          type: string
+          example: "jens@example.com"
+        roomNumber:
+          type: integer
+          example: 101
+        checkIn:
+          type: string
+          format: date
+          example: "2026-11-01"
+        checkOut:
+          type: string
+          format: date
+          example: "2026-11-05"
+        status:
+          type: string
+          enum: [confirmed, cancelled, checked_in, checked_out]
+          example: confirmed
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - guestName
+        - email
+        - roomNumber
+        - checkIn
+        - checkOut
+    BookingInput:
+      type: object
+      properties:
+        guestName:
+          type: string
+        email:
+          type: string
+        roomNumber:
+          type: integer
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [confirmed, cancelled, checked_in, checked_out]
+      required:
+        - guestName
+        - email
+        - roomNumber
+        - checkIn
+        - checkOut
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      example:
+        error: "Fejlbeskrivelse"
