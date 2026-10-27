@@ -1,0 +1,30 @@
+# Plan: Booking-POC
+
+## Mål
+
+Levere en lille browserbaseret POC, hvor receptionist kan oprette, se, rette og slette bookinger, og hvor ændringer gemmes i MySQL og overlever genstart.
+
+## Teknologistak og arkitektur
+
+- Genbrug frontendens eksisterende HTML, CSS og JavaScript i `frontend/index.html` samt Nginx-containeren.
+- Genbrug backendens Node.js/Express-kode og JavaScript-moduler.
+- Bevar 3-lagsarkitekturen: REST-ruter som præsentationslag, bookingtjeneste som forretningslogiklag og MySQL/pool som datalag.
+- API'et bruger REST og JSON. Browseren kalder `/api/bookings`; Nginx videresender `/api/` til backend-servicen i Compose-netværket.
+- MySQL initialiseres med det eksisterende bookingskema og eksempeldata. En navngiven Docker-volumen gemmer databasefilerne ved container-genstart.
+- Swagger UI viser den eksisterende OpenAPI-kontrakt på backendens `/api-docs`.
+
+## Køreoplevelse
+
+Fra projektroden skal `docker compose -f compose.yaml up --build -d` starte MySQL, backend og frontend. Frontendens adresse er `http://localhost:8080`, og Swagger UI findes på `http://localhost:8080/api-docs/`.
+
+## Arbejdsrækkefølge
+
+1. Gør Compose, databaseinitialisering og persistens klar.
+2. Få backendens CRUD og validering til at følge Clarify-beslutningerne.
+3. Forbind Nginx og browserens eksisterende CRUD-brugerflade til backend.
+4. Synkronisér OpenAPI/Swagger og dokumentér kørsel.
+5. Gennemfør Converge-kontrollen mod acceptkriterierne.
+
+## Afgrænsning
+
+Ingen Tableau, hotelanalyse, baranalyse, gæstelogin, betaling eller integrationsarbejde indgår i denne POC.

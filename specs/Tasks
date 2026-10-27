@@ -1,0 +1,52 @@
+# Tasks: Booking-POC
+
+## T1 — Start MySQL med persistens
+
+**Status: Færdig.** Verificeret 2026-10-27: `docker compose -f compose.yaml up --build -d` startede MySQL, backend og frontend. Bookinglisten returnerede eksempelbookinger; en tydeligt mærket testbooking kunne hentes igen efter genstart af MySQL-containeren. Testbookingen blev derefter slettet. Frontend, API og Swagger UI svarede med HTTP 200. Hostens port 3306 var optaget, så MySQL-porten er kun tilgængelig internt på Compose-netværket.
+
+- Konfigurer Compose til MySQL og backend/frontend-tjenesterne; genbrug eksisterende Dockerfiles og `mysql/init.sql`.
+- Tilknyt MySQL's datadir en navngiven volumen, og tilføj passende afhængighed/healthcheck, så backend starter mod tilgængelig database.
+- **Accept:** `docker compose -f compose.yaml up --build -d` starter alle tjenester; MySQL opretter `hotel_db` og `bookings`; eksempelbookinger kan læses; en oprettet booking findes fortsat efter genstart af containerne.
+
+## T2 — Håndhæv bookingregler i backend
+
+**Status: Færdig.** Genbygget backend og verificeret 2026-10-27. Gyldig POST gav HTTP 201 og standardstatus `confirmed`; gyldig fuld PUT gav HTTP 200. POST og PUT afviste manglende/tomt navn, ugyldig e-mail, værelsesnummer 0/decimal, ugyldige eller forkert formaterede datoer, checkout før/lig checkin samt ugyldig status med HTTP 400 og forklarende `error`. Efter ugyldige PUT-kald var værdierne fortsat uændrede ved GET. POST/PUT/GET/DELETE mod ukendt ID gav HTTP 404. Den særskilte integrationstestbooking ID 10 blev slettet; API og MySQL viste ingen egne testdata tilbage.
+
+- Genbrug Express-ruterne og `bookingService.js`.
+- Valider obligatoriske felter, e-mail, positivt heltals-`roomNumber`, datoer og tilladte `status`-værdier ved oprettelse og rettelse.
+- **Accept:** POST og PUT gemmer gyldige bookinger; ugyldige data giver HTTP 400 med forklarende JSON-fejl; ukendt ID ved GET/PUT/DELETE giver HTTP 404.
+
+## T3 — Forbind frontend med backend gennem Nginx
+
+**Status: Færdig.** Brugeren har bekræftet opret, slet og redigering i browseren. Redigeringsflowet blev desuden verificeret gennem API og direkte MySQL-opslag med en separat testbooking; den blev slettet bagefter. Se Converge-resultatet i `Feature/Implement.md` for adskillelse af brugerens browserkontrol og agentens API/DB-kontrol.
+
+**Redigeringsrettelse verificeret 2026-10-27:** Edit-rækken blev før rettelsen indsat med `tr.after(editForm)`, mens `tr` endnu ikke var tilføjet til DOM'en. Derfor blev rækken ikke tilføjet; Rediger-knappens `tr.nextElementSibling` pegede ikke på formularen. Frontendens rækkefølge er rettet, og frontend-containeren er genbygget. Testbooking ID 7 blev oprettet, opdateret med `PUT /api/bookings/7` (HTTP 200), bekræftet med efterfølgende GET/listning og direkte SELECT i MySQL, og derefter slettet (HTTP 204, efterfølgende GET HTTP 404, ingen test-rækker tilbage). Selve klik/indtastning i en browser er ikke automatiseret i dette miljø.
+
+- **Manuel browserkontrol:** Åbn `http://localhost:8080`, klik **Rediger** på en booking, ændr gæstens navn, klik **Gem**, kontrollér den opdaterede række, og genindlæs siden for at bekræfte at ændringen stadig vises.
+
+- Konfigurer Nginx til at videresende `/api/` til backend-servicen; behold frontendens relative `/api/bookings`-kald og eksisterende formular/listelogik.
+- Sørg for at rettelsesformularen sender hele bookingens feltsæt til PUT.
+- **Accept:** Frontend åbnes via den publicerede Compose-port; liste, oprettelse, rettelse og sletning virker gennem browseren og læser/skriver MySQL-data.
+
+## T4 — Hold OpenAPI og Swagger UI ajour
+
+**Status: Færdig.** OpenAPI beskriver obligatoriske felter, formater og grænser, POST-standardstatus, fuld PUT-erstatning samt 400/404/500-svar. Swagger UI svarede HTTP 200 og dets indlæste dokument indeholdt `BookingCreateInput`, `BookingUpdateInput`, `ValidationError` og `NotFound`.
+
+- Opdatér den OpenAPI-fil, backend faktisk indlæser, så obligatoriske felter, status, fejlresponser og fuld PUT-input svarer til Clarify.
+- **Accept:** `/api-docs` åbner Swagger UI, viser CRUD-endpoints og beskriver input og 400/404-responser korrekt.
+
+## T5 — Dokumentér opstart
+
+**Status: Færdig.** README beskriver den eksplicitte Compose-kommando, adresser, statuskontrol og hvordan volumendata bevares.
+
+- Opdatér README med forudsætninger, `docker-compose up`, frontend-adresse, Swagger-adresse og hvordan MySQL-data bevares.
+- **Accept:** En udvikler kan starte POC'en fra projektroden og finde browser og API-dokumentation ud fra README.
+
+## T6 — Converge-kontrol
+
+**Status: Færdig som kontrolrapport.** Kriterierne er gennemgået; resterende mangler er markeret under T2 og T4 og i `Feature/Implement.md`. Det betyder ikke, at hele booking-POC'en eller den samlede Analytics Platform-specifikation er færdig.
+
+- Gennemgå acceptkriterierne T1–T5 mod den færdige implementering.
+- Gennemfør demo-flowet: opret booking i browseren, se den i listen, ret den, kontrollér værdierne og slet den; kontrollér at ændringerne ligger i MySQL.
+- Kontrollér ugyldige input, ukendt ID, Swagger UI, opstart med `docker compose -f compose.yaml up --build -d` og persistens efter genstart.
+- **Accept:** Hvert kriterium markeres opfyldt eller manglende med konkret observation; resterende mangler rapporteres uden at blive kaldt færdige.

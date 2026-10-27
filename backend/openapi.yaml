@@ -1,0 +1,234 @@
+openapi: 3.0.3
+info:
+  title: Hotel Kong Arthur - Booking API
+  description: REST/JSON API til oprettelse, visning, rettelse og sletning af hotelbookinger.
+  version: 1.1.0
+servers:
+  - url: http://localhost:3000/api
+    description: Lokal udvikling
+  - url: http://localhost:8080/api
+    description: Via frontendens Nginx-proxy
+tags:
+  - name: bookings
+    description: Administration af hotelbookinger
+paths:
+  /bookings:
+    get:
+      tags: [bookings]
+      summary: Hent alle bookinger
+      operationId: getAllBookings
+      responses:
+        '200':
+          description: Liste over bookinger
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [bookings]
+      summary: Opret en booking
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreateInput'
+      responses:
+        '201':
+          description: Booking oprettet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /bookings/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        description: Bookingens positive heltals-ID
+        schema:
+          type: integer
+          minimum: 1
+    get:
+      tags: [bookings]
+      summary: Hent en booking efter ID
+      operationId: getBookingById
+      responses:
+        '200':
+          description: Booking fundet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [bookings]
+      summary: Erstat alle bookingfelter
+      description: >
+        Fuld opdatering. Alle felter i BookingUpdateInput skal sendes. Hvis bookingens ID
+        ikke findes, returneres 404. Ugyldige felter afvises før databasen ændres.
+      operationId: updateBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingUpdateInput'
+      responses:
+        '200':
+          description: Booking opdateret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [bookings]
+      summary: Slet en booking
+      operationId: deleteBooking
+      responses:
+        '204':
+          description: Booking slettet
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        guestName:
+          type: string
+          maxLength: 100
+          example: Jens Hansen
+        email:
+          type: string
+          format: email
+          maxLength: 100
+          example: jens@example.com
+        roomNumber:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          example: 101
+        checkIn:
+          type: string
+          format: date
+          example: '2026-11-01'
+        checkOut:
+          type: string
+          format: date
+          description: Skal være efter checkIn.
+          example: '2026-11-05'
+        status:
+          type: string
+          enum: [confirmed, cancelled, checked_in, checked_out]
+          example: confirmed
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, guestName, email, roomNumber, checkIn, checkOut, status, createdAt]
+    BookingCreateInput:
+      type: object
+      description: Ved oprettelse er status valgfri og sættes som standard til confirmed.
+      properties:
+        guestName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Må ikke være tom eller kun bestå af mellemrum.
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        roomNumber:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+          description: Skal være en gyldig dato efter checkIn.
+        status:
+          type: string
+          enum: [confirmed, cancelled, checked_in, checked_out]
+          default: confirmed
+      required: [guestName, email, roomNumber, checkIn, checkOut]
+    BookingUpdateInput:
+      type: object
+      description: PUT erstatter bookingens fulde feltsæt; alle felter, inklusive status, er påkrævede.
+      properties:
+        guestName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Må ikke være tom eller kun bestå af mellemrum.
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        roomNumber:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+          description: Skal være en gyldig dato efter checkIn.
+        status:
+          type: string
+          enum: [confirmed, cancelled, checked_in, checked_out]
+      required: [guestName, email, roomNumber, checkIn, checkOut, status]
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: email skal være en gyldig e-mailadresse på højst 100 tegn.
+      required: [error]
+  responses:
+    ValidationError:
+      description: Input mangler eller overholder ikke bookingreglerne. Ingen data ændres.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Bookingens ID findes ikke.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Uventet fejl i tjenesten eller databasen.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

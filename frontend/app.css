@@ -1,0 +1,751 @@
+:root {
+  color-scheme: light;
+  --canvas: #f3efe7;
+  --paper: #fffefa;
+  --paper-soft: #faf8f3;
+  --ink: #28352f;
+  --muted: #68736c;
+  --line: #e8e3d9;
+  --green: #234a3d;
+  --green-hover: #183a30;
+  --green-soft: #e9f0e9;
+  --rust: #8b4236;
+  --rust-hover: #71342b;
+  --success-bg: #e9f2e9;
+  --success-ink: #28583e;
+  --error-bg: #faece8;
+  --error-ink: #873c30;
+  --shadow: 0 16px 44px rgba(53, 48, 37, 0.07), 0 2px 8px rgba(53, 48, 37, 0.04);
+  font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 82% 0%, rgba(220, 209, 188, 0.34), transparent 34rem),
+    var(--canvas);
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+}
+
+.page-shell {
+  width: min(100% - 48px, 1240px);
+  margin: 0 auto;
+}
+
+.site-header {
+  min-height: 104px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid rgba(86, 82, 68, 0.14);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(35, 74, 61, 0.34);
+  border-radius: 50%;
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+  font-weight: 600;
+}
+
+.brand-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.brand-name {
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.brand-subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.045em;
+}
+
+.api-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border: 1px solid rgba(35, 74, 61, 0.25);
+  border-radius: 8px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.api-link:hover {
+  border-color: rgba(35, 74, 61, 0.5);
+  background: rgba(255, 254, 250, 0.68);
+}
+
+.api-link-arrow {
+  font-size: 16px;
+  line-height: 1;
+}
+
+main {
+  padding: 38px 0 58px;
+}
+
+.page-intro {
+  position: relative;
+  min-height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 34px;
+  padding: 30px 36px;
+  overflow: hidden;
+  border: 1px solid rgba(95, 83, 61, 0.08);
+  border-radius: 14px;
+  background: linear-gradient(115deg, #ebe4d7 0%, #f4efe6 61%, #eee8dc 100%);
+}
+
+.page-intro::after {
+  position: absolute;
+  top: -116px;
+  right: 70px;
+  width: 330px;
+  height: 330px;
+  border: 1px solid rgba(35, 74, 61, 0.12);
+  border-radius: 50%;
+  content: "";
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: #66766b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.page-intro h1,
+.section-heading h2,
+.form-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.page-intro h1 {
+  font-size: clamp(30px, 4vw, 43px);
+  line-height: 1.12;
+}
+
+.intro-copy {
+  margin: 9px 0 0;
+  color: #59665e;
+  font-size: 15px;
+}
+
+.intro-ornament {
+  z-index: 1;
+  margin-right: 42px;
+  color: rgba(35, 74, 61, 0.55);
+  font-size: 62px;
+  font-weight: 200;
+  line-height: 1;
+}
+
+.booking-section {
+  display: grid;
+  gap: 18px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 2px 2px;
+}
+
+.section-heading h2,
+.form-heading h2 {
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.button {
+  min-height: 43px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+.button-primary {
+  background: var(--green);
+  color: #fff;
+}
+
+.button-primary:hover {
+  background: var(--green-hover);
+}
+
+.button-quiet {
+  border-color: #d9d5cc;
+  background: #fffefa;
+  color: #46544b;
+}
+
+.button-quiet:hover {
+  background: var(--paper-soft);
+}
+
+.button-icon {
+  font-size: 21px;
+  font-weight: 400;
+  line-height: 0.8;
+}
+
+.card {
+  border: 1px solid rgba(80, 75, 61, 0.1);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.booking-form {
+  display: grid;
+  gap: 23px;
+  padding: 25px 27px 24px;
+}
+
+.form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.form-heading h2 {
+  font-size: 23px;
+}
+
+.form-heading-mark {
+  color: #91a18e;
+  font-size: 25px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 17px 20px;
+}
+
+.form-field {
+  min-width: 0;
+}
+
+.form-field label,
+.edit-form label {
+  display: block;
+  margin: 0 0 6px;
+  color: #4c5a50;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.form-field input,
+.form-field select,
+.edit-form input,
+.edit-form select {
+  width: 100%;
+  min-height: 43px;
+  padding: 9px 11px;
+  border: 1px solid #dcd9d0;
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.edit-form input:focus,
+.edit-form select:focus {
+  border-color: #6a8a75;
+  box-shadow: 0 0 0 3px rgba(62, 105, 78, 0.14);
+}
+
+.form-field input::placeholder,
+.edit-form input::placeholder {
+  color: #929991;
+}
+
+.form-actions,
+.edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.message {
+  padding: 12px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.message.success {
+  border-color: #c9dcc9;
+  background: var(--success-bg);
+  color: var(--success-ink);
+}
+
+.message.error {
+  border-color: #e8c8bf;
+  background: var(--error-bg);
+  color: var(--error-ink);
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+table {
+  width: 100%;
+  min-width: 1010px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+thead {
+  background: #f7f5ef;
+}
+
+th {
+  padding: 14px 13px;
+  border-bottom: 1px solid var(--line);
+  color: #657168;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+td {
+  padding: 14px 13px;
+  border-bottom: 1px solid #eeeae2;
+  color: #46534b;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+tbody tr:not(.edit-form):hover {
+  background: #fbfaf6;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+td strong {
+  color: #2c3c33;
+  font-weight: 650;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #f0eee8;
+  color: #5e625c;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.status::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.status.confirmed {
+  border-color: #d8e5d6;
+  background: #edf4eb;
+  color: #3d6746;
+}
+
+.status.checked_in {
+  border-color: #d0e2d6;
+  background: #e7f1e9;
+  color: #285d42;
+}
+
+.status.checked_out {
+  border-color: #e6d8d2;
+  background: #f5eeeb;
+  color: #7c5148;
+}
+
+.status.cancelled {
+  border-color: #e4e1da;
+  background: #f3f1ec;
+  color: #656962;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.actions button.secondary {
+  border-color: #d7dfd6;
+  background: #f0f5ef;
+  color: #2f5c43;
+}
+
+.actions button.secondary:hover {
+  border-color: #b9cdb9;
+  background: #e5eee4;
+}
+
+.actions button.danger {
+  border-color: #ead5cf;
+  background: #fbf1ee;
+  color: #873f34;
+}
+
+.actions button.danger:hover {
+  border-color: #dcb7ad;
+  background: #f6e5df;
+}
+
+.edit-form {
+  display: none;
+  grid-template-columns: repeat(3, minmax(135px, 1fr));
+  gap: 13px;
+  margin: 0;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+  background: #f8f7f2;
+}
+
+.edit-form.show {
+  display: grid;
+}
+
+.edit-form > div {
+  min-width: 0;
+}
+
+.edit-form .edit-actions {
+  grid-column: 1 / -1;
+}
+
+.edit-form .eSave,
+.edit-form .eCancel {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.edit-form .eSave {
+  background: var(--green);
+  color: #fff;
+}
+
+.edit-form .eSave:hover {
+  background: var(--green-hover);
+}
+
+.edit-form .eCancel {
+  border-color: #d9d5cc;
+  background: #fffefa;
+  color: #46544b;
+}
+
+.edit-form .eCancel:hover {
+  background: #efede6;
+}
+
+.empty-state {
+  padding: 48px 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-mark {
+  display: block;
+  margin-bottom: 9px;
+  color: #81917f;
+  font-size: 25px;
+}
+
+.empty-state p {
+  margin: 0 0 3px;
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+}
+
+.empty-state span:last-child {
+  font-size: 13px;
+}
+
+.site-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 2px 24px;
+  border-top: 1px solid rgba(86, 82, 68, 0.14);
+  color: #707970;
+  font-size: 11px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+:focus-visible {
+  outline: 3px solid #8aa58d;
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .page-shell {
+    width: min(100% - 32px, 1240px);
+  }
+
+  .site-header {
+    min-height: 84px;
+  }
+
+  .brand-mark {
+    width: 39px;
+    height: 39px;
+    font-size: 20px;
+  }
+
+  .brand-name {
+    font-size: 17px;
+  }
+
+  .brand-subtitle {
+    font-size: 11px;
+  }
+
+  .api-link {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  main {
+    padding-top: 24px;
+  }
+
+  .page-intro {
+    min-height: 150px;
+    margin-bottom: 26px;
+    padding: 25px 24px;
+  }
+
+  .page-intro::after {
+    right: -165px;
+  }
+
+  .intro-ornament {
+    margin-right: 0;
+    font-size: 42px;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .booking-form {
+    padding: 21px;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-shell {
+    width: min(100% - 24px, 1240px);
+  }
+
+  .site-header {
+    gap: 10px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+  }
+
+  .brand-name {
+    font-size: 15px;
+  }
+
+  .brand-subtitle {
+    font-size: 10px;
+  }
+
+  .api-link {
+    gap: 5px;
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  .page-intro {
+    min-height: 140px;
+    padding: 21px 18px;
+  }
+
+  .page-intro h1 {
+    max-width: 250px;
+    font-size: 31px;
+  }
+
+  .intro-copy {
+    max-width: 240px;
+    font-size: 13px;
+  }
+
+  .intro-ornament {
+    display: none;
+  }
+
+  .section-heading {
+    align-items: center;
+  }
+
+  .section-heading h2 {
+    font-size: 25px;
+  }
+
+  .section-heading .button {
+    min-height: 40px;
+    padding: 9px 11px;
+    font-size: 12px;
+  }
+
+  .form-grid,
+  .edit-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .booking-form {
+    gap: 18px;
+    padding: 18px 16px;
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
+  }
+
+  .edit-form .edit-actions {
+    grid-column: auto;
+  }
+
+  .site-footer {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

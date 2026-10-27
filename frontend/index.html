@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f3efe7" />
+  <title>Hotel Kong Arthur · Bookingadministration</title>
+  <link rel="stylesheet" href="/app.css" />
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Hotel Kong Arthur, bookingadministration">
+        <span class="brand-mark" aria-hidden="true">H</span>
+        <span class="brand-copy">
+          <span class="brand-name">Hotel Kong Arthur</span>
+          <span class="brand-subtitle">Bookingadministration</span>
+        </span>
+      </a>
+      <a class="api-link" href="/api-docs/" target="_blank" rel="noopener noreferrer">
+        <span>API-dokumentation</span>
+        <span class="api-link-arrow" aria-hidden="true">↗</span>
+      </a>
+    </header>
+
+    <main>
+      <section class="page-intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">Reception · Reservationer</p>
+          <h1 id="page-title">Et roligt overblik</h1>
+          <p class="intro-copy">Se og administrér hotellets bookinger ét sted.</p>
+        </div>
+        <span class="intro-ornament" aria-hidden="true">✳</span>
+      </section>
+
+      <section class="booking-section" aria-labelledby="bookings-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Gæster og ophold</p>
+            <h2 id="bookings-heading">Bookinger</h2>
+          </div>
+          <button id="btnToggleForm" class="button button-primary" type="button">
+            <span class="button-icon" aria-hidden="true">+</span>
+            Opret booking
+          </button>
+        </div>
+
+        <div id="statusMsg" class="message hidden" role="status" aria-live="polite"></div>
+
+        <form id="bookingForm" class="booking-form card hidden" aria-labelledby="bookingFormHeading">
+          <div class="form-heading">
+            <div>
+              <p class="eyebrow">Ny reservation</p>
+              <h2 id="bookingFormHeading">Bookingoplysninger</h2>
+            </div>
+            <span class="form-heading-mark" aria-hidden="true">✳</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="fGuestName">Gæstens navn</label>
+              <input type="text" id="fGuestName" autocomplete="name" required />
+            </div>
+            <div class="form-field">
+              <label for="fEmail">E-mail</label>
+              <input type="email" id="fEmail" autocomplete="email" required />
+            </div>
+            <div class="form-field">
+              <label for="fRoomNumber">Værelsesnummer</label>
+              <input type="number" id="fRoomNumber" min="1" step="1" required />
+            </div>
+            <div class="form-field">
+              <label for="fCheckIn">Indtjekning</label>
+              <input type="date" id="fCheckIn" required />
+            </div>
+            <div class="form-field">
+              <label for="fCheckOut">Udtjekning</label>
+              <input type="date" id="fCheckOut" required />
+            </div>
+            <div class="form-field">
+              <label for="fStatus">Status</label>
+              <select id="fStatus">
+                <option value="confirmed">Bekræftet</option>
+                <option value="checked_in">Indtjekket</option>
+                <option value="checked_out">Udtjekket</option>
+                <option value="cancelled">Annulleret</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="btnSave" class="button button-primary">Gem booking</button>
+            <button type="button" id="btnCancel" class="button button-quiet">Fortryd</button>
+            <input type="hidden" id="fId" />
+          </div>
+        </form>
+
+        <div id="bookingsTableWrap" class="table-card card">
+          <div class="table-scroll">
+            <table id="bookingsTable">
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Gæst</th>
+                  <th scope="col">E-mail</th>
+                  <th scope="col">Værelse</th>
+                  <th scope="col">Indtjekning</th>
+                  <th scope="col">Udtjekning</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Oprettet</th>
+                  <th scope="col">Handlinger</th>
+                </tr>
+              </thead>
+              <tbody id="bookingsBody"></tbody>
+            </table>
+          </div>
+          <div id="emptyState" class="empty-state hidden">
+            <span class="empty-mark" aria-hidden="true">✳</span>
+            <p>Der er ingen bookinger at vise endnu.</p>
+            <span>Opret en booking for at komme i gang.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>Hotel Kong Arthur</span>
+      <span>En varm velkomst begynder her</span>
+    </footer>
+  </div>
+</body>
+</html>

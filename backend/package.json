@@ -1,0 +1,22 @@
+{
+  "name": "hotel-kong-arthur-backend",
+  "version": "1.0.0",
+  "description": "Hotel booking backend - 3-lags arkitektur med REST API, MySQL og Swagger UI",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.0",
+    "cors": "^2.8.5",
+    "swagger-ui-express": "^5.0.0",
+    "yamljs": "^0.3.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

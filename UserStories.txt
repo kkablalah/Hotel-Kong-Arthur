@@ -1,0 +1,19 @@
+Receptionist - "Som receptionist ønsker jeg et system som kan hjælpe mig med den daglige drift, dvs. et bookingsystem med overblik over bookede, ikke bookede hotelværelse".
+
+Acceptkriterie - "Et bookingsystem, som registrer antal bookede værelser".
+
+Hotel administrator - "Jeg ønsker mig et bookingsystem, som danner et godt overblik over vores værelser og gæster.
+
+Acceptkriterie - "For mig vil det være en succes, hvis bookingsystemet danner os et godt overblik over værelser og vores gæster"
+
+Management - "Jeg kunne godt tænke mig at have overblik over hvordan det går på hotellet"
+
+Acceptkriterie - "Det vil være en succes, hvis det muligt at analyserer gennem grafer mv. hvor mange bookinger der er, og hvornår".
+
+Bar management - "Som Bar management kunne jeg godt tænke mig, at have styr på hvad der er vores mest solgte produkter, og evt. hvor meget avance der er på de forskellige tilbud vi tilbyder på hotellet"
+
+Acceptkriterie - "Det vil være en lettelse, hvis jeg kunne få noget statistik på drikkevarene".
+
+Dashboard user - "For mig er det vigtigt at have et fuldt billede af hotellet, derfor er jeg interesseret i så mange nøgletal og information som muligt"
+
+Acceptkriterie - "Et dashboard med et fuldkomment billede af hotellet gennem tal og statistik".
