@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hotel Kong Arthur - Booking</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f4f6f8; color: #1f2937; line-height: 1.5; }
+    header { background: #111827; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.25rem; }
+    .badge { background: #3b82f6; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; }
+    main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+    .toolbar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    button { background: #111827; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    button:hover { background: #1f2937; }
+    button.secondary { background: #6b7280; }
+    button.danger { background: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+    button.primary { background: #059669; }
+    button.primary:hover { background: #047857; }
+    form { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; align-items: end; }
+    input, select { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; }
+    label { font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.2rem; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { background: #f3f4f6; font-size: 0.75rem; text-transform: uppercase; color: #6b7280; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f9fafb; }
+    .status { font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 999px; display: inline-block; background: #e5e7eb; color: #374151; }
+    .status.confirmed { background: #dbeafe; color: #1e40af; }
+    .status.checked_in { background: #dcfce7; color: #166534; }
+    .status.checked_out { background: #fef2f2; color: #991b1b; }
+    .status.cancelled { background: #f3f4f6; color: #6b7280; }
+    .actions { display: flex; gap: 0.4rem; }
+    .actions button { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
+    .hidden { display: none; }
+    .msg { padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; }
+    .msg.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .msg.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .empty { text-align: center; padding: 2rem; color: #6b7280; }
+    .api-link { margin-left: auto; font-size: 0.75rem; color: #3b82f6; text-decoration: none; }
+    .api-link:hover { text-decoration: underline; }
+    .edit-form { display: none; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; background: #f9fafb; padding: 0.75rem; border-radius: 6px; border: 1px dashed #d1d5db; }
+    .edit-form.show { display: grid; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Hotel Kong Arthur</h1>
+      <div style="font-size:0.8rem;opacity:0.9">Booking system &bull; REST API + Swagger UI</div>
+    </div>
+    <a class="api-link" href="/api-docs" target="_blank">Åbn API dokumentation (Swagger UI)</a>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <button id="btnToggleForm" class="primary">+ Opret booking</button>
+      <span style="flex:1"></span>
+      <span id="statusMsg" class="msg hidden"></span>
+    </div>
+
+    <form id="bookingForm" class="hidden">
+      <div><label>Gæstens navn</label><input type="text" id="fGuestName" required/></div>
+      <div><label>E-mail</label><input type="email" id="fEmail" required/></div>
+      <div><label>Værelsesnr.</label><input type="number" id="fRoomNumber" min="1" required/></div>
+      <div><label>Indtjekning</label><input type="date" id="fCheckIn" required/></div>
+      <div><label>Udtjekning</label><input type="date" id="fCheckOut" required/></div>
+      <div><label>Status</label><select id="fStatus">
+        <option value="confirmed">Bekræftet</option>
+        <option value="checked_in">Indtjekket</option>
+        <option value="checked_out">Udtjekket</option>
+        <option value="cancelled">Annulleret</option>
+      </select></div>
+      <div style="grid-column: 1 / -1; display:flex; gap:0.5rem;">
+        <button type="submit" id="btnSave">Gem booking</button>
+        <button type="button" id="btnCancel" class="secondary">Fortryd</button>
+        <input type="hidden" id="fId"/>
+      </div>
+    </form>
+
+    <table id="bookingsTable">
+      <thead>
+        <tr>
+          <th>ID</th><th>Gæst</th><th>E-mail</th><th>Værelse</th><th>Indtjek</th><th>Udtjek</th><th>Status</th><th>Oprettet</th><th>Handlinger</th>
+        </tr>
+      </thead>
+      <tbody id="bookingsBody"></tbody>
+    </table>
+
+    <div id="emptyState" class="empty hidden">Ingen bookinger fundet.</div>
+  </main>
+
+  <script>
+    const API = '/api/bookings';
+    const form = document.getElementById('bookingForm');
+    const tableBody = document.getElementById('bookingsBody');
+    const emptyState = document.getElementById('emptyState');
+    const statusMsg = document.getElementById('statusMsg');
+    const btnToggle = document.getElementById('btnToggleForm');
+    const btnSave = document.getElementById('btnSave');
+    const btnCancel = document.getElementById('btnCancel');
+    const fId = document.getElementById('fId');
+    const fields = ['fGuestName','fEmail','fRoomNumber','fCheckIn','fCheckOut','fStatus'];
+
+    let editingId = null;
+
+    function showMsg(text, type) {
+      statusMsg.textContent = text;
+      statusMsg.className = 'msg ' + (type === 'error' ? 'error' : 'success');
+      statusMsg.classList.remove('hidden');
+      setTimeout(() => statusMsg.classList.add('hidden'), 4000);
+    }
+
+    function resetForm() {
+      form.reset();
+      fId.value = '';
+      editingId = null;
+      btnSave.textContent = 'Gem booking';
+      fields.forEach(id => document.getElementById(id).disabled = false);
+      form.classList.add('hidden');
+      btnToggle.textContent = '+ Opret booking';
+      document.querySelectorAll('.edit-form').forEach(el => el.classList.remove('show'));
+    }
+
+    btnToggle.addEventListener('click', () => {
+      if (form.classList.contains('hidden')) {
+        resetForm();
+        form.classList.remove('hidden');
+        btnToggle.textContent = 'Luk opret formular';
+      } else {
+        resetForm();
+      }
+    });
+
+    btnCancel.addEventListener('click', resetForm);
+
+    async function loadBookings() {
+      try {
+        const res = await fetch(API);
+        if (!res.ok) throw new Error('Kunne ikke hente bookinger');
+        const data = await res.json();
+        render(data);
+      } catch (err) {
+        console.error(err);
+        showMsg('Fejl ved indlæsning af bookinger: ' + err.message, 'error');
+      }
+    }
+
+    function render(bookings) {
+      tableBody.innerHTML = '';
+      if (!bookings || bookings.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+      for (const b of bookings) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${b.id}</td>
+          <td><strong>${escapeHtml(b.guestName)}</strong></td>
+          <td>${escapeHtml(b.email)}</td>
+          <td>${b.roomNumber}</td>
+          <td>${formatDate(b.checkIn)}</td>
+          <td>${formatDate(b.checkOut)}</td>
+          <td><span class="status ${b.status}">${b.status}</span></td>
+          <td>${formatDateTime(b.createdAt)}</td>
+          <td class="actions"></td>
+        `;
+        const actions = tr.querySelector('.actions');
+
+        const btnEdit = document.createElement('button');
+        btnEdit.textContent = 'Rediger';
+        btnEdit.className = 'secondary';
+        btnEdit.onclick = () => openEditForm(tr, b);
+        actions.appendChild(btnEdit);
+
+        const btnDel = document.createElement('button');
+        btnDel.textContent = 'Slet';
+        btnDel.className = 'danger';
+        btnDel.onclick = () => deleteBooking(b.id);
+        actions.appendChild(btnDel);
+
+        // Inline edit form
+        const editForm = document.createElement('div');
+        editForm.className = 'edit-form';
+        editForm.innerHTML = `
+          <div><label>Gæst</label><input type="text" class="eGuestName" value="${escapeHtml(b.guestName)}"/></div>
+          <div><label>E-mail</label><input type="email" class="eEmail" value="${escapeHtml(b.email)}"/></div>
+          <div><label>Værelse</label><input type="number" class="eRoomNumber" min="1" value="${b.roomNumber}"/></div>
+          <div><label>Indtjek</label><input type="date" class="eCheckIn" value="${formatDateInput(b.checkIn)}"/></div>
+          <div><label>Udtjek</label><input type="date" class="eCheckOut" value="${formatDateInput(b.checkOut)}"/></div>
+          <div><label>Status</label><select class="eStatus">
+            <option value="confirmed" ${b.status === 'confirmed' ? 'selected' : ''}>Bekræftet</option>
+            <option value="checked_in" ${b.status === 'checked_in' ? 'selected' : ''}>Indtjekket</option>
+            <option value="checked_out" ${b.status === 'checked_out' ? 'selected' : ''}>Udtjekket</option>
+            <option value="cancelled" ${b.status === 'cancelled' ? 'selected' : ''}>Annulleret</option>
+          </select></div>
+          <div style="grid-column: 1 / -1; display:flex; gap:0.4rem;">
+            <button class="eSave primary">Gem</button>
+            <button class="eCancel secondary">Fortryd</button>
+          </div>
+        `;
+        tr.after(editForm);
+
+        const eSave = editForm.querySelector('.eSave');
+        const eCancel = editForm.querySelector('.eCancel');
+        eSave.onclick = (e) => {
+          e.preventDefault();
+          const booking = {
+            guestName: editForm.querySelector('.eGuestName').value,
+            email: editForm.querySelector('.eEmail').value,
+            roomNumber: parseInt(editForm.querySelector('.eRoomNumber').value),
+            checkIn: editForm.querySelector('.eCheckIn').value,
+            checkOut: editForm.querySelector('.eCheckOut').value,
+            status: editForm.querySelector('.eStatus').value,
+          };
+          updateBooking(b.id, booking);
+        };
+        eCancel.onclick = () => editForm.classList.remove('show');
+
+        tableBody.appendChild(tr);
+      }
+    }
+
+    function openEditForm(tr, b) {
+      document.querySelectorAll('.edit-form').forEach(el => el.classList.remove('show'));
+      tr.nextElementSibling.classList.add('show');
+    }
+
+    async function createBooking(booking) {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(booking),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showMsg(err.error || 'Kunne ikke oprette booking', 'error');
+        throw new Error(err.error || 'create failed');
+      }
+      showMsg('Booking oprettet', 'success');
+      resetForm();
+      loadBookings();
+    }
+
+    async function updateBooking(id, booking) {
+      const res = await fetch(`${API}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(booking),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showMsg(err.error || 'Kunne ikke opdatere booking', 'error');
+        throw new Error(err.error || 'update failed');
+      }
+      showMsg('Booking opdateret', 'success');
+      loadBookings();
+    }
+
+    async function deleteBooking(id) {
+      if (!confirm('Er du sikker på, at du vil slette denne booking?')) return;
+      const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        showMsg('Kunne ikke slette booking', 'error');
+        return;
+      }
+      showMsg('Booking slettet', 'success');
+      loadBookings();
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const booking = {
+        guestName: document.getElementById('fGuestName').value,
+        email: document.getElementById('fEmail').value,
+        roomNumber: parseInt(document.getElementById('fRoomNumber').value),
+        checkIn: document.getElementById('fCheckIn').value,
+        checkOut: document.getElementById('fCheckOut').value,
+        status: document.getElementById('fStatus').value,
+      };
+      if (editingId) {
+        updateBooking(editingId, booking);
+      } else {
+        createBooking(booking);
+      }
+    });
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleDateString('da-DK');
+    }
+    function formatDateInput(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    }
+    function formatDateTime(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleString('da-DK');
+    }
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    loadBookings();
+  </script>
+</body>
+</html>
