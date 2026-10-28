@@ -1,0 +1,25 @@
+Spg. - Svaret gennem Claude.
+
+Hvordan defineres de forskellige sæsoner i hotelbranchen? - "Typisk for danske hoteller: højsæson er jun-aug (sommer) samt jul/nyt år, skuldersæson er forår (mar-maj) og efterår (sep-nov), og lavsæson er vinter (jan-feb). Storbyhoteller med erhvervsgæster har ofte omvendt højsæson i forår og efterår og lavsæson i juli."
+
+Hvilke tal er mest spænende at kigge på for et hotel, i et dashboard? - "Belægningsprocent, ADR (gennemsnitlig værelsespris) og RevPAR (omsætning pr. disponibelt værelse) er kernen, vist pr. måned eller sæson. Supplér med afbestillingsrate, gennemsnitligt opholdslængde, booking lead time og fordeling på gæstesegment/bookingkanal."
+
+hvordan beregnes belægningsgraden? - "Belægningsgrad = (solgte værelsesnætter ÷ disponible værelsesnætter) × 100. Fx 90 solgte af 120 disponible = 75 %."
+
+Hvad er den største udgiftspost for et Hotel? - "Lønomkostninger er typisk den største udgiftspost, ofte ca. 30-40 % af omsætningen. Derefter følger bl.a. drift (energi, rengøring, vedligehold), mad og drikke samt salgs- og bookingomkostninger (fx kommission til Booking.com)."
+
+hvad er indtjeningsforholdet i en bar på et hotel? - "Varekøb (drikkevarer) udgør typisk ca. 20-30 % af baromsætningen, så bruttomarginen er omkring 70-80 %. Efter løn og drift er nettoresultatet ofte kun ca. 10-20 %, og tallene varierer med hotel og prispolitik."
+
+hvordan afgøres hotelpriserne? - "Priserne sættes via revenue management: hotellet justerer prisen efter efterspørgsel (sæson, belægning, events), konkurrenternes priser, værelsestype, bookingtidspunkt og -kanal. De fleste hoteller bruger dynamisk prissætning, så prisen stiger, når belægningen går op, og falder ved lav efterspørgsel."
+
+Hvad er RevPAR? - "Omsætning pr. disponibelt værelse = belægningsgrad × ADR. Det samler både udnyttelse og pris i ét tal."
+
+Hvad er ADR? - "Gennemsnitlig værelsespris = værelsesomsætning ÷ solgte værelsesnætter."
+
+Hvad er booking lead time? - "Antal dage mellem bookingtidspunkt og ankomst. Den bruges til at forudsige efterspørgsel og styre priser."
+
+Hvad er no-show-rate? - "Andelen af bookinger, hvor gæsten ikke møder op. Hoteller overbooker ofte lidt for at kompensere."
+
+Hvad er forskellen på leisure- og business-gæster? - "Leisure er ferie- og fritidsrejsende, som booker tidligt og rejser i weekender og ferier. Business er erhvervsgæster, som booker sent og rejser på hverdage."
+
+Hvorfor sælger hoteller via Booking.com, når der er kommission? - "Det giver synlighed og flere bookinger, men kommissionen er typisk ca. 15-20 %, så hoteller forsøger at flytte gæster til direkte booking."
