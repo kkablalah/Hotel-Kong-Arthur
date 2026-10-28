@@ -1,0 +1,78 @@
+TASKS: Hotel Kong Arthur
+[P] = kan laves parallelt. Efter hver task laves et commit, og alle i gruppen tager tasks.
+
+FASE 0: Setup
+
+T001 Opret repo, branch-regler, README/CONTRIBUTE-skelet og specs/ (constitution, spec, plan, tasks)
+T002 [P] .gitignore og .env.example
+T003 [P] Mappestruktur: backend/ (api, services, repositories, models, schemas), frontend/, tests/
+
+FASE 1: Fundament (blokerer alt andet, US-14)
+
+T004 docker-compose med db (MySQL + healthcheck), backend, frontend og swagger-ui
+T005 Backend-skelet i tre lag med health-endpoint og forbindelse til MySQL
+T006 Datamodel og migrering: room_types, rooms, guests, bookings, drinks, bar_sales (reviews valgfri)
+T007 OpenAPI-skelet og swagger-ui-container, der læser openapi.yaml (US-13)
+T008 Fælles fejlformat og validering
+T009 Tableau-spike: hent ét endpoint ind i Tableau Desktop (REST-forbindelse, ellers fallback)
+
+FASE 2: Data (kræver T006)
+
+T010 Beslut og dokumentér Clarify-punkter: C-01 til C-17
+T011 Seed-script (CSV): idempotent import, fordeling af 214 værelser på 8 typer, genererede datoer og værelsesnumre, is_demo-markering
+T012 [P] Seed af bar (xlsx): 20 cocktails og 10 kaffetyper, demo-salg
+T013 Sæsonregel som service med enhedstest (C-02, C-03)
+
+FASE 3: Booking (US-01, US-02)
+
+T014 Booking-repository og -service med regel mod dobbeltbooking
+T015 Endpoints POST/GET/PUT/DELETE /bookings med 400/404/409
+T016 Tests af CRUD og fejlkoder
+T017 GET /rooms/availability?date= (booket/ledige)
+T018 [P] Frontend: liste, opret/ret-formular og sletning med bekræftelse (Vibe-prompts 1-7)
+T019 Frontend i Docker: nginx og proxy af /api (Vibe-prompt 8)
+
+FASE 4: Hotel-nøgletal (kræver T011, T013)
+
+T020 Gæster pr. land (US-04)
+T021 Belægning pr. periode og måned samt antal bookinger over tid (US-05), enhedstest mod kontrolværdier
+T022 Indtjening pr. værelsestype og sæson, og pr. land (US-06), tests
+T023 Årets indtjening (US-07)
+T024 Selvvalgt nøgletal, fx RevPAR (US-11)
+
+FASE 5: Bar (kræver T012)
+
+T025 [P] Helene Christines årssalg (US-08)
+T026 [P] Omsætning pr. drink og mest solgte (US-09)
+T027 [P] Cocktail/kaffe-fordeling med valgt metode (US-10)
+
+FASE 6: Live-data (US-03)
+
+T028 Simulator, der opretter bookinger og barsalg
+T029 Test: ny eller ændret booking ændrer nøgletallene uden genimport
+
+FASE 7: Dashboard (US-12, kræver fase 4-5 og T009)
+
+T030 Datakilder i Tableau mod endpoints
+T031 Visualiseringer: gæster pr. land, indtjening (type, sæson, land), årets indtjening, selvvalgt nøgletal
+T032 Visualiseringer: Helenes salg, pr. drink, cocktail/kaffe-fordeling
+T033 Filtre (sæson, land, værelsestype, periode) samt titler og perioder på alle nøgletal
+T034 Kontrol af dashboard-tal mod API og kontrolberegning
+T035 Aftal refresh-adfærd (C-14)
+
+FASE 8: Dokumentation og Converge
+
+T036 Gennemgå OpenAPI: formål, parametre og responser for alle endpoints
+T037 README med arkitekturdiagram og CONTRIBUTE.md
+T038 Test af docker-compose up fra frisk clone (US-14)
+T039 Converge: tjek alle user stories mod acceptkriterier, notér hvad der mangler, og tilføj nye tasks
+T040 Forbered præsentationen (10 min: proces, arkitektur, live-demo, hvad mangler) og fordel hvem der forklarer hvad
+
+AFHÆNGIGHEDER
+
+T004-T008 blokerer alt andet, og T006 blokerer fase 2.
+Fase 4 og 5 kræver seed og sæsonregel.
+Dashboardet kræver fase 4-5 og tidlig Tableau-spike (T009).
+T039 køres løbende og til sidst.
+
+Anbefalet rækkefølge: fase 0, 1, 2, 3, derefter 4 og 5 parallelt, så 6, 7 og 8.
