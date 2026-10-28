@@ -1,0 +1,72 @@
+PLAN: Hotel Kong Arthur Analytics Platform
+
+Teknologi (forslag, ret hvis I bruger andet)
+Backend: Python + FastAPI (OpenAPI og Swagger UI genereres automatisk)
+Database: MySQL 8 via SQLAlchemy
+Frontend: ren HTML/CSS/JS serveret af nginx (kun booking-CRUD)
+API-dokumentation: swagger-ui-container, der læser openapi.yaml
+Dashboard: Tableau Desktop mod API/MySQL
+Drift: Docker Compose, én kommando
+Arkitektur
+Receptionist → Frontend (nginx) → /api → Backend → MySQL
+Tableau → REST/JSON → Backend
+Swagger UI → openapi.yaml
+
+Backend i tre lag:
+
+Præsentation: routes, validering, HTTP-fejlkoder. Ingen forretningslogik.
+Forretning: booking-regler og alle nøgletal.
+Data: repositories, der som de eneste taler med MySQL.
+Datamodel (udkast)
+room_types: id, navn, kapacitet, pris_lav/mellem/høj
+rooms: id, værelsesnummer, room_type_id (C-08)
+guests: id, fornavn, efternavn, land
+bookings: id, guest_id, room_id, check_in, check_out, nætter, sæson, pris, is_demo
+drinks: id, navn, kategori (cocktail/kaffe), pris, indkøbspris (valgfri, C-15)
+bar_sales: id, drink_id, antal, solgt_tidspunkt, sælger, is_demo (C-10)
+reviews (valgfri): id, booking_id, rating (C-16)
+
+CSV’en har ingen datoer eller værelsesnumre. Seed genererer dem og markerer dem is_demo (C-17). Sæson afledes af check_in (C-02, C-03).
+
+API (flade JSON-lister, så Tableau kan bruge dem)
+GET/POST /bookings, GET/PUT/DELETE /bookings/{id} (US-01)
+GET /rooms/availability?date= (US-02)
+GET /analytics/guests-by-country (US-04)
+GET /analytics/occupancy?from=&to=&granularity=month (US-05)
+GET /analytics/revenue/by-room-type-season og /by-country (US-06)
+GET /analytics/revenue/annual?year= (US-07)
+GET /analytics/kpi/revpar (US-11, C-12)
+GET /bar/sales/total?year=&seller= (US-08)
+GET /bar/sales/by-drink (US-09)
+GET /bar/sales/category-split?basis=units|revenue (US-10, C-11)
+
+Fælles fejlformat: status, fejlbesked og felter.
+
+Docker Compose
+db: mysql:8, port 3306, volume og healthcheck
+backend: port 8000, venter på db, kører migrering og seed
+frontend: nginx, port 8080, proxyer /api/ til backend (undgår CORS)
+swagger-ui: port 8081
+Konfiguration via .env (.env.example i repoet)
+Seed og live-data
+Ved første opstart oprettes tabeller, og CSV/xlsx importeres idempotent.
+Manglende data genereres deterministisk og markeres is_demo.
+Nye data kommer via POST/PUT/DELETE, og nøgletal beregnes ved hvert kald direkte fra MySQL (C-01).
+En simulator opretter bookinger og barsalg, så “live” kan vises til fremlæggelsen.
+Tableau
+Spike først: test forbindelsen mod ét endpoint tidligt i uge 1.
+Primær: REST API-forbindelse i Tableau Desktop (kræver driver, tjek version).
+Fallback: direkte MySQL-forbindelse eller CSV-eksport-endpoint.
+Refresh-adfærd aftales (C-14).
+Test
+Enhedstests af nøgletal mod kontrolværdier fra SQL/Excel.
+API-tests af CRUD og fejlkoder (400/404/409).
+Manuel acceptprøve mod acceptkriterierne og test af docker-compose up fra en frisk clone.
+Stikprøver af dashboard-tal mod API’et.
+Risici
+Tableau kan ikke tale med API’et: spike tidligt, ellers fallback.
+Lav belægning (1.000 bookinger over 214 værelser × 365 nætter): generér mere demodata eller afgræns perioden (C-13).
+Manglende data (datoer, rating, indkøbspris): demodata markeret is_demo, og begrænsningerne dokumenteres.
+Tidspres (fremlæggelse 6/11): byg i lodrette skiver og lav Converge løbende.
+Næste skridt (rækkefølge for tasks)
+Skelet med Docker og tomt endpoint → booking-CRUD → seed → nøgletal → bar → frontend → Tableau → dokumentation.
