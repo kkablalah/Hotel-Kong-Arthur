@@ -1,0 +1,53 @@
+# Constitution: Hotel Kong Arthur Analytics Platform
+
+## Kerneprincipper
+
+### I. Spec-drevet udvikling
+Specifikationen styrer AI'en og er målestok for resultatet. Der skrives ikke kode, før den relevante spec, plan og tasks findes. Flowet er: Constitution → Specify → Clarify → Plan → Tasks → Implement → Converge. Mangler der noget i Converge, tilføjes nye tasks, og implement → converge gentages, til systemet matcher specifikationen.
+
+### II. Tre-lags arkitektur
+Backend er opdelt i præsentations-, forretnings- og datalag. Afhængigheder går kun nedad. Præsentationslaget indeholder ingen forretningslogik, og nøgletal beregnes i forretningslaget.
+
+### III. API-first med REST/JSON
+Systemet eksponerer alt via et REST API med JSON. Kontrakten er en OpenAPI-specifikation, der er tilgængelig via Swagger UI. Kontrakten opdateres sammen med koden og skrives gerne før den.
+
+### IV. MySQL som eneste datakilde
+Al data ligger i MySQL. CSV/xlsx bruges kun til den indledende seed. Systemet skal kunne tage imod nye og ændrede data løbende (POST/PUT/DELETE), uden at alt historisk data skal importeres igen.
+
+### V. Alt kører i Docker
+Hele systemet (backend, database, frontend, Swagger UI) startes med én `docker-compose up` fra en frisk clone. Ingen manuelle trin udover det dokumenterede.
+
+### VI. Konsistente og verificerbare nøgletal
+Hvert nøgletal (belægning, indtjening, sæsoner, bar-fordeling m.fl.) har én dokumenteret definition, som API og Tableau deler. Beregninger testes mod underliggende data eller en uafhængig kontrolberegning. Definitionerne besluttes i Clarify og ændres ikke i stilhed.
+
+### VII. Ærlig data
+Demodata og genererede data markeres tydeligt og blandes ikke med verificerede historiske data. Manglende data håndteres ensartet og skjules aldrig i et nøgletal. Antagelser dokumenteres.
+
+### VIII. Ejerskab og AI-brug
+AI bruges til hele opgaven, men hele gruppen skal kunne forklare og vurdere al kode. Al AI-genereret kode gennemgås, før den accepteres. Opgaver implementeres én ad gangen, og dem, der ikke kan forklares, skrives om eller forenkles.
+
+### IX. Enkelhed og afgrænsning
+Vi bygger kun det, specifikationen kræver. Afgrænsninger fra Specify (fx betaling, login, prognoser) holdes ude, medmindre gruppen eksplicit tilføjer dem.
+
+### X. Samarbejde og dokumentation
+Alle i gruppen bidrager med kode og commits. Arbejdet foregår på branches og samles via review. Repoet indeholder altid: README.md med arkitekturdiagram, CONTRIBUTE.md, `specs/` (constitution, spec, plan, tasks), user stories med acceptkriterier og seneste Converge-resultat.
+
+### XI. Sikkerhed
+Ingen hemmeligheder (adgangskoder, nøgler) i repoet. Konfiguration kommer fra miljøvariabler eller en `.env`-fil, og en `.env.example` ligger i repoet. Input valideres i backend.
+
+## Teknologiske rammer
+
+| Område | Valg |
+|---|---|
+| Backend | Tre lag, programmeringssprog frit (vælges i Plan) |
+| Grænseflade | REST/JSON, OpenAPI, Swagger UI |
+| Database | MySQL |
+| Frontend | Browserbaseret prototype til booking (opret, ret, slet) |
+| Analytics | Interaktivt Tableau-dashboard baseret på API'et |
+| Drift | Docker og Docker Compose |
+
+## Governance
+
+Constitutionen gælder over alle andre aftaler i projektet. Ændringer kræver enighed i gruppen og dokumenteres med dato og begrundelse. Spec, plan og tasks skal altid kunne begrundes ud fra principperne her.
+
+**Version:** 1.0.0 | **Vedtaget:** 2026-10-28 | **Senest ændret:** 2026-10-28
