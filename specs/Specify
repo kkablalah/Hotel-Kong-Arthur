@@ -1,10 +1,35 @@
-Specify:
-
 # Feature Specification: Hotel Kong Arthur Analytics Platform
+
+## Implementeringsstatus — 29. oktober 2026
+
+Dette dokument beskriver både projektets samlede krav og den afgrænsede prototype,
+der er lavet. Kravene og acceptkriterierne nedenfor er bevaret; de er ikke alle opfyldt.
+Plan og Tasks beskriver det konkrete teknologivalg og det resterende arbejde.
+
+Grundlag: `main` ved `d90f0b2` og booking-/Tableau-koden på `Jazmin` ved `c312835`.
+Funktionalitet på Jazmin er ikke dermed flettet ind i main. Dashboardet er vurderet
+ud fra gruppens skærmbilleder; selve Tableau-workbooken er ikke gennemgået her.
+
+| Område | Status i den nuværende prototype |
+|---|---|
+| Booking-CRUD | Implementeret med Node.js/Express, MySQL og browserbrugerflade. Tidligere testresultater findes i `Feature/Implement.md` på Jazmin. |
+| REST/JSON og Swagger UI | Booking-endpoints og en manuelt vedligeholdt OpenAPI-fil findes. Swagger UI kører i Express. |
+| Docker | Jazmins `compose.yaml` starter MySQL, backend og frontend efter lokal miljøopsætning. Tableau Desktop/Public åbnes separat. |
+| Tableau og API | En egen Web Data Connector 2.x henter bookingdata fra API'et. Antallet er demonstreret ændret fra 3 til 4 efter manuel Refresh. |
+| Tableau-diagrammer | De viste hotel- og bardiagrammer bruger regnearksdata; bookingtallet er en separat API-datakilde. |
+| Tre lag | Routes og service findes. SQL ligger fortsat i bookingservice; et separat repository-lag mangler. |
+| Samlet analyse fra MySQL/API | Mangler: indlæsning af analysegrundlag, nødvendige felter og analyse-endpoints. |
+
+"Opdaterede data" betyder i den demonstrerede løsning, at en gemt booking kan
+hentes ved næste API-kald, og at Tableau viser ændringen efter manuel Refresh.
+Der er ikke implementeret automatisk opdatering eller en realtidsforbindelse.
+Eventuelle krav om automatisk opdatering skal aftales særskilt og verificeres.
+
+Se `Converge` for evidens, begrænsninger og en konkret gentagelse af demonstrationen.
 
 ## 1. Overview
 
-### 1.1 Purpos
+### 1.1 Purpose
 
 Hotel Kong Arthur needs a system that collects, manages, and presents hotel and cocktail bar data to support operational and business decisions.
 
