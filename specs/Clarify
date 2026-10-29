@@ -1,25 +1,63 @@
-Spg. - Svaret gennem Claude.
+# Clarify: Hotel Kong Arthur
 
-Hvordan defineres de forskellige sæsoner i hotelbranchen? - "Typisk for danske hoteller: højsæson er jun-aug (sommer) samt jul/nyt år, skuldersæson er forår (mar-maj) og efterår (sep-nov), og lavsæson er vinter (jan-feb). Storbyhoteller med erhvervsgæster har ofte omvendt højsæson i forår og efterår og lavsæson i juli."
+Opdateret 29. oktober 2026. Punkterne følger C-01–C-14 i Specify.
+"Observeret" betyder kode eller en vist demonstration. "Åben" betyder, at gruppen
+stadig skal beslutte og dokumentere reglen; et forslag er ikke en vedtaget beslutning.
 
-Hvilke tal er mest spænende at kigge på for et hotel, i et dashboard? - "Belægningsprocent, ADR (gennemsnitlig værelsespris) og RevPAR (omsætning pr. disponibelt værelse) er kernen, vist pr. måned eller sæson. Supplér med afbestillingsrate, gennemsnitligt opholdslængde, booking lead time og fordeling på gæstesegment/bookingkanal."
+## Afklaringer
 
-hvordan beregnes belægningsgraden? - "Belægningsgrad = (solgte værelsesnætter ÷ disponible værelsesnætter) × 100. Fx 90 solgte af 120 disponible = 75 %."
+| ID | Observeret løsning og resterende beslutning |
+|---|---|
+| C-01: Opdaterede data | Observeret: bookingændringer gemmes i MySQL og læses igen ved GET. Tableau henter et extract ved forbindelse/Refresh. Der er ikke målt en garanteret maksimal forsinkelse. Åben: accepteres manuel Refresh i opgaven, eller kræves automatisk opdatering? |
+| C-02: Sæsoner | Observeret: regnearksdashboardet bruger datasættets sæsonværdier. Åben: præcise datoer for low/mid/high ved nye bookinger. API'et beregner ikke sæson. Generel hotelpraksis er ikke i sig selv en projektregel. |
+| C-03: December/jul | Åben: dokumentér præcis sæsongrænse for december og jul. |
+| C-04: Belægning | Ikke implementeret i API'et. Forslag: optagne værelsesnætter / disponible værelsesnætter × 100 for en valgt periode. Antal bookinger er ikke belægningsprocent. Kapacitet og datagrundlag skal fastlægges først. |
+| C-05: Aflysninger og overlap | Status findes, men systemet forhindrer endnu ikke overlappende bookinger. Åben: hvilke statusser tæller, hvordan lukkede værelser håndteres, og hvordan ophold afgrænses til perioden. Forslag: ankomstdag medregnes, afrejsedag medregnes ikke. |
+| C-06: Omsætning | Åben: betyder datasættets Price pris pr. nat eller samlet opholdspris? Dokumentér reglen før API-beregning. Omsætning er ikke overskud; udgifter fremgår ikke af bookingmodellen. Eksisterende diagrammer skal kontrolleres mod valgt definition. |
+| C-07: År | Åben: vælg rapporteringsår og regel for ophold over årsskifte. Et datasæt uden verificerede datoer kan ikke alene dokumentere årsomsætning. |
+| C-08: Værelser | Opgaven beskriver 214 værelser og otte typer. Nuværende API validerer et positivt heltal, men har ikke et register over hotellets faktiske værelser. Nummer 305 er fx ikke i sig selv bevis på mere end 214 værelser. Åben: register og fordeling på typer. |
+| C-09: Bardata | De viste diagrammer bruger drinks-regnearket. Åben: kortlæg felter, enheder, priser og manglende datoer. Der findes ikke barsalgs-endpoints i den gennemgåede POC. |
+| C-10: Helene Christine | Åben: hvordan identificeres hendes salg og salgsår? Et samlet bartal må ikke betegnes som hendes årssalg uden dokumenteret afgrænsning. Genererede sælger-/datofelter skal mærkes som demo. |
+| C-11: Cocktail/kaffe | Farverne viser kategorier, men dokumenterer ikke i sig selv en procentberegning. Åben: vælg antal eller omsætning som grundlag og håndtér nul i nævneren. |
+| C-12: Ekstra nøgletal | Dashboardet viser en fordeling af opholdslængder og et bookingtal fra API'et. Åben: vælg hvilket mål der opfylder ekstrakravet. Forslag: gennemsnitlig opholdslængde med tydeligt datagrundlag. RevPAR er endnu ikke implementeret. |
+| C-13: Manglende data | Observeret: `mysql/init.sql` opretter små eksempelbookinger. Regneark og API-data er separate. Åben: reproducerbar import, oprindelse og markering af genererede datoer, værelser og salg. Et `is_demo`-felt findes ikke i den nuværende bookingtabel. |
+| C-14: Tableau Refresh | Demonstreret lokalt: Data → Hotel Kong Arthur – Booking API → Refresh, hvorefter 3 blev til 4. Dette gælder API-datakilden; regnearksdiagrammer bliver ikke automatisk koblet til bookingændringer. Automatisk opdatering er en mulig udvidelse, ikke en eksisterende funktion. |
 
-Hvad er den største udgiftspost for et Hotel? - "Lønomkostninger er typisk den største udgiftspost, ofte ca. 30-40 % af omsætningen. Derefter følger bl.a. drift (energi, rengøring, vedligehold), mad og drikke samt salgs- og bookingomkostninger (fx kommission til Booking.com)."
+## Teknologi, der allerede findes
 
-hvad er indtjeningsforholdet i en bar på et hotel? - "Varekøb (drikkevarer) udgør typisk ca. 20-30 % af baromsætningen, så bruttomarginen er omkring 70-80 %. Efter løn og drift er nettoresultatet ofte kun ca. 10-20 %, og tallene varierer med hotel og prispolitik."
+- Backend: JavaScript med Node.js/Express og `mysql2`.
+- Database: MySQL 8.0.
+- Frontend: HTML/CSS/JavaScript, serveret af Nginx.
+- OpenAPI: `backend/openapi.yaml`, vist med `swagger-ui-express`.
+- Tableau: egen HTML/JavaScript Web Data Connector 2.x på
+  `http://localhost:8080/tableau.html`.
+- Drift: `docker compose -f compose.yaml up --build -d` fra Jazmin-kopien,
+  efter opsætning af `.env` som beskrevet i dens README.
 
-hvordan afgøres hotelpriserne? - "Priserne sættes via revenue management: hotellet justerer prisen efter efterspørgsel (sæson, belægning, events), konkurrenternes priser, værelsestype, bookingtidspunkt og -kanal. De fleste hoteller bruger dynamisk prissætning, så prisen stiger, når belægningen går op, og falder ved lav efterspørgsel."
+Python, FastAPI, SQLAlchemy, simulator og en særskilt Swagger-container var
+forslag i den tidligere plan. De beskriver ikke den gennemgåede implementering.
 
-Hvad er RevPAR? - "Omsætning pr. disponibelt værelse = belægningsgrad × ADR. Det samler både udnyttelse og pris i ét tal."
+## Automatisk opdatering: muligheder og begrænsninger
 
-Hvad er ADR? - "Gennemsnitlig værelsespris = værelsesomsætning ÷ solgte værelsesnætter."
+WDC 2.x opretter extracts. Tableau Public kan ikke selv opdatere publicerede
+WDC-extracts. Et JavaScript-interval i connectorens side er derfor ikke nok til
+at holde det publicerede dashboard opdateret.
 
-Hvad er booking lead time? - "Antal dage mellem bookingtidspunkt og ankomst. Den bruges til at forudsige efterspørgsel og styre priser."
+Tableau Server kan konfigureres til at opdatere et WDC-extract, når connectoren
+er godkendt på serveren, og datakilden er tilgængelig. Det kræver en separat
+opsætning og test. `localhost` på en server peger på serveren, ikke på udviklerens
+computer. En anden connector eller licens skal vurderes, hvis ægte live-forespørgsler
+er et krav. En direkte MySQL-forbindelse kræver også afklaring af API-kravet.
 
-Hvad er no-show-rate? - "Andelen af bookinger, hvor gæsten ikke møder op. Hoteller overbooker ofte lidt for at kompensere."
+WDC 2.x er en ældre connector-generation. Registrér den præcise Tableau-version,
+som gruppen bruger, før den valgte løsning betragtes som reproducerbar.
 
-Hvad er forskellen på leisure- og business-gæster? - "Leisure er ferie- og fritidsrejsende, som booker tidligt og rejser i weekender og ferier. Business er erhvervsgæster, som booker sent og rejser på hverdage."
+Kilder, kontrolleret 29. oktober 2026:
+- https://help.tableau.com/current/pro/desktop/en-gb/examples_web_data_connector.htm
+- https://help.tableau.com/current/pro/desktop/en-us/public_faq.htm
 
-Hvorfor sælger hoteller via Booking.com, når der er kommission? - "Det giver synlighed og flere bookinger, men kommissionen er typisk ca. 15-20 %, så hoteller forsøger at flytte gæster til direkte booking."
+## Beslutningslog
+
+Denne revision beskriver det observerede arbejde og åbne valg. Den erstatter ikke
+gruppens godkendelse af forretningsregler. Tilføj dato, beslutning, begrundelse og
+berørte krav, når gruppen lukker et punkt.
