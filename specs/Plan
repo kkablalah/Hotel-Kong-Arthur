@@ -1,72 +1,137 @@
-PLAN: Hotel Kong Arthur Analytics Platform
+# Plan: Hotel Kong Arthur
 
-Teknologi (forslag, ret hvis I bruger andet)
-Backend: Python + FastAPI (OpenAPI og Swagger UI genereres automatisk)
-Database: MySQL 8 via SQLAlchemy
-Frontend: ren HTML/CSS/JS serveret af nginx (kun booking-CRUD)
-API-dokumentation: swagger-ui-container, der læser openapi.yaml
-Dashboard: Tableau Desktop mod API/MySQL
-Drift: Docker Compose, én kommando
-Arkitektur
-Receptionist → Frontend (nginx) → /api → Backend → MySQL
-Tableau → REST/JSON → Backend
-Swagger UI → openapi.yaml
+Revision 29. oktober 2026. Planen tager udgangspunkt i main `d90f0b2` og den
+implementerede booking-/Tableau-POC på Jazmin `c312835`. Det er ikke en påstand
+om, at Jazmin allerede er flettet ind i main. Samlede krav: Specify.
 
-Backend i tre lag:
+## 1. Implementeret teknologi
 
-Præsentation: routes, validering, HTTP-fejlkoder. Ingen forretningslogik.
-Forretning: booking-regler og alle nøgletal.
-Data: repositories, der som de eneste taler med MySQL.
-Datamodel (udkast)
-room_types: id, navn, kapacitet, pris_lav/mellem/høj
-rooms: id, værelsesnummer, room_type_id (C-08)
-guests: id, fornavn, efternavn, land
-bookings: id, guest_id, room_id, check_in, check_out, nætter, sæson, pris, is_demo
-drinks: id, navn, kategori (cocktail/kaffe), pris, indkøbspris (valgfri, C-15)
-bar_sales: id, drink_id, antal, solgt_tidspunkt, sælger, is_demo (C-10)
-reviews (valgfri): id, booking_id, rating (C-16)
+| Del | Teknologi og placering |
+|---|---|
+| Backend | Node.js/Express, `backend/src/app.js` |
+| HTTP-ruter | `backend/src/routes/bookings.js` |
+| Bookingregler og nuværende SQL | `backend/src/services/bookingService.js` |
+| Databaseforbindelse | `backend/src/db.js`, MySQL 8.0 via mysql2 |
+| Databaseskema og eksempeldata | `mysql/init.sql` |
+| Brugerflade | `frontend/index.html`, `app.css`, `app.js` på Jazmin |
+| Webserver og proxy | Nginx, `frontend/nginx.conf` |
+| API-dokumentation | `backend/openapi.yaml`, Swagger UI i Express |
+| Tableau-connector | `frontend/tableau.html` og `frontend/tableau.js` på Jazmin |
+| Opstart | Jazmins `compose.yaml` |
 
-CSV’en har ingen datoer eller værelsesnumre. Seed genererer dem og markerer dem is_demo (C-17). Sæson afledes af check_in (C-02, C-03).
+Python/FastAPI og SQLAlchemy indgår ikke i denne implementering. Teknologien
+skiftes ikke alene for at følge et tidligere AI-genereret forslag.
 
-API (flade JSON-lister, så Tableau kan bruge dem)
-GET/POST /bookings, GET/PUT/DELETE /bookings/{id} (US-01)
-GET /rooms/availability?date= (US-02)
-GET /analytics/guests-by-country (US-04)
-GET /analytics/occupancy?from=&to=&granularity=month (US-05)
-GET /analytics/revenue/by-room-type-season og /by-country (US-06)
-GET /analytics/revenue/annual?year= (US-07)
-GET /analytics/kpi/revpar (US-11, C-12)
-GET /bar/sales/total?year=&seller= (US-08)
-GET /bar/sales/by-drink (US-09)
-GET /bar/sales/category-split?basis=units|revenue (US-10, C-11)
+## 2. Dataflow og arkitektur
 
-Fælles fejlformat: status, fejlbesked og felter.
+Bookingbrugerfladen kalder `/api/bookings` gennem Nginx. Express-ruter kalder
+bookingservice, der validerer input og læser/skriver MySQL gennem poolen i db.js.
+Swagger UI viser kontrakten fra backend/openapi.yaml.
 
-Docker Compose
-db: mysql:8, port 3306, volume og healthcheck
-backend: port 8000, venter på db, kører migrering og seed
-frontend: nginx, port 8080, proxyer /api/ til backend (undgår CORS)
-swagger-ui: port 8081
-Konfiguration via .env (.env.example i repoet)
-Seed og live-data
-Ved første opstart oprettes tabeller, og CSV/xlsx importeres idempotent.
-Manglende data genereres deterministisk og markeres is_demo.
-Nye data kommer via POST/PUT/DELETE, og nøgletal beregnes ved hvert kald direkte fra MySQL (C-01).
-En simulator opretter bookinger og barsalg, så “live” kan vises til fremlæggelsen.
-Tableau
-Spike først: test forbindelsen mod ét endpoint tidligt i uge 1.
-Primær: REST API-forbindelse i Tableau Desktop (kræver driver, tjek version).
-Fallback: direkte MySQL-forbindelse eller CSV-eksport-endpoint.
-Refresh-adfærd aftales (C-14).
-Test
-Enhedstests af nøgletal mod kontrolværdier fra SQL/Excel.
-API-tests af CRUD og fejlkoder (400/404/409).
-Manuel acceptprøve mod acceptkriterierne og test af docker-compose up fra en frisk clone.
-Stikprøver af dashboard-tal mod API’et.
-Risici
-Tableau kan ikke tale med API’et: spike tidligt, ellers fallback.
-Lav belægning (1.000 bookinger over 214 værelser × 365 nætter): generér mere demodata eller afgræns perioden (C-13).
-Manglende data (datoer, rating, indkøbspris): demodata markeret is_demo, og begrænsningerne dokumenteres.
-Tidspres (fremlæggelse 6/11): byg i lodrette skiver og lav Converge løbende.
-Næste skridt (rækkefølge for tasks)
-Skelet med Docker og tomt endpoint → booking-CRUD → seed → nøgletal → bar → frontend → Tableau → dokumentation.
+Tableau åbner connectorens side. `getSchema` definerer kolonnerne, og `getData`
+henter `/api/bookings` gennem samme Nginx-proxy. Tableau gemmer de hentede rækker
+som et extract. Dashboardets øvrige viste diagrammer læser separate regneark.
+
+Målarkitekturen er præsentation → forretning → data. Næste arkitekturopgave er
+et booking-repository, der overtager SQL fra servicen uden at ændre API-kontrakten.
+Nøgletal skal efterfølgende beregnes i backend efter fælles definitioner.
+
+## 3. Nuværende datamodel og kontrakt
+
+Bookingtabellen har `id`, `guest_name`, `email`, `room_number`, `check_in`,
+`check_out`, `status` og `created_at`. JSON bruger `guestName`, `roomNumber`,
+`checkIn`, `checkOut` og `createdAt` til de tilsvarende felter.
+
+| Endpoint | Nuværende adfærd |
+|---|---|
+| GET /api/bookings | Liste over bookinger |
+| GET /api/bookings/{id} | En booking eller 404 |
+| POST /api/bookings | Opretter booking; 201 eller 400 ved ugyldigt input |
+| PUT /api/bookings/{id} | Erstatter hele bookingens redigerbare feltsæt; 200, 400 eller 404 |
+| DELETE /api/bookings/{id} | Sletter; 204 eller 404 |
+| GET /health | Backendens health-svar |
+
+POST/PUT validerer navn, e-mail, positivt heltals-værelsesnummer, gyldige datoer,
+afrejse efter ankomst og status. POST bruger `confirmed`, hvis status mangler.
+PUT kræver hele feltsættet. Statusværdier: `confirmed`, `cancelled`, `checked_in`,
+`checked_out`. Validerings- og ikke-fundet-svar bruger `{ "error": "besked" }`.
+Interne fejl kan også indeholde `detail`; ensartet håndtering af parser- og
+interne fejl skal kontrolleres i tests. Der er ingen implementeret 409-regel mod
+dobbeltbooking og intet register, som kontrollerer, at værelset findes.
+
+## 4. Docker og opstart
+
+1. Brug den kodekopi, der indeholder Jazmins POC-ændringer.
+2. Start Docker Desktop, kopiér `.env.example` til `.env`, og udfyld adgangskoder.
+3. Kør fra projektroden: `docker compose -f compose.yaml up --build -d`.
+
+Brugerflade: http://localhost:8080
+Swagger UI: http://localhost:8080/api-docs/
+API direkte: http://localhost:3000/api/bookings
+Tableau-connector: http://localhost:8080/tableau.html
+
+MySQL er intern i Compose-netværket og behøver ingen værtsport 3306. Data gemmes
+i en navngiven volumen. `mysql/init.sql` bruges ved initialisering af en tom
+databasevolumen; det er ikke en automatisk import af regneark ved hver opstart.
+Stop med `docker compose -f compose.yaml down`; undlad `-v`, når data skal bevares.
+Tableau åbnes separat. De forskellige Compose-filer i repoet skal afklares ved
+sammenfletning; brug ikke en tilfældig fil alene ud fra dens navn.
+
+## 5. Tableau og det nuværende dashboard
+
+Connectoren anvender WDC 2.x-biblioteket. Den sender seks felter: Booking ID,
+Værelsesnummer, Ankomst, Afrejse, Antal nætter og Status. Antal nætter beregnes
+i connectoren ud fra afrejse minus ankomst i dage. Navn og e-mail sendes ikke
+til Tableau gennem denne connector.
+
+Det viste KPI-ark bruger COUNT(Booking ID). Det tæller også aflyste bookinger,
+medmindre et statusfilter tilføjes. Det er et bookingtal, ikke en belægningsprocent.
+Manuel Refresh er demonstreret med ændringen 3 → 4 efter en ny booking.
+
+Dashboardets viste dele kan beholdes: landekort, opholdslængder, omsætning efter
+værelsestype/sæson, omsætning pr. drik, bartotal og API-bookingtal. Titler skal
+angive datakilde og periode, hvor perioden er kendt. Landeklik filtrerer de
+relevante hotelvisninger; et landefilter må ikke antyde at filtrere API-bookinger,
+som endnu ikke har et landefelt.
+
+Regnearkene er `Datasets/international_names_with_rooms_1000.xlsx` og
+`Datasets/drinks_menu_with_sales.xlsx` på main. Det skal verificeres i workbooken,
+hvilke konkrete felter og beregninger hvert ark bruger. `.twbx` er gemt lokalt
+af brugeren og findes ikke i de gennemgåede commits; den skal deles særskilt.
+
+WDC-extractet opdaterer ikke sig selv. Automatisk opdatering kræver afklaring
+af Tableau-produkt, drift og adgang til API'et; se Clarify C-14. Det implementeres
+ikke ved blot at genindlæse bookingwebsiden.
+
+## 6. Resterende udvikling mod de samlede krav
+
+1. Gennemgå og integrér Jazmin-ændringer med main; behold miljøvariabler og
+   kontrollér Docker-, Nginx- og OpenAPI-filer samlet.
+2. Udskil repository-laget og tilføj meningsfulde regressionstests for CRUD.
+3. Beslut C-01–C-14 og kortlæg inputdata. Planlæg tabeller for værelser/typer,
+   lande og barsalg efter det faktiske datagrundlag. Markér genererede data.
+4. Implementér reproducerbar indlæsning til MySQL. Udvid bookingdata, så analyser
+   kan kobles korrekt til værelse, type, pris, land og rapporteringsperiode.
+5. Implementér analyse-endpoints for belægning (US-06), værelses-/sæsonomsætning
+   (US-07), landeomsætning (US-08), årsomsætning (US-09), Helenes årssalg (US-10),
+   drikkeomsætning (US-11), kategoriprocenter (US-12) og et valgt ekstra nøgletal
+   (FR-10). Endpointnavne besluttes i OpenAPI, før de bruges i Tableau.
+6. Erstat regnearksforbindelser med API-baserede data, og kontrollér hver
+   visualisering mod en uafhængig beregning. Behold det eksisterende layout.
+7. Test fra frisk kopi og en isoleret tom database, del workbooken, og afslut
+   med Converge mod alle acceptkriterier.
+
+En simulator og ekstra tabeller til anmeldelser eller indkøbspriser er ikke
+nødvendige for den demonstrerede bookingforbindelse. Tilføj dem kun med et
+begrundet krav; generér ikke data alene for at få et pænere belægningstal.
+
+## 7. Verifikation
+
+Tidligere bookingtest er rapporteret i Feature/Implement.md på Jazmin.
+Denne dokumentrevision har gennemgået kildekoden og brugerens skærmbilleder;
+den har ikke genkørt Docker eller tests. Tasks og Converge skelner mellem
+implementeret, tidligere demonstreret og endnu ikke verificeret.
+
+Ved næste test: CRUD med gyldige/ugyldige værdier, 404, bevarelse efter genstart,
+Swagger-kontrakt, præcis Tableau-version og en ny booking efterfulgt af Refresh.
+Analyseberegninger testes først, når definitioner og datagrundlag findes.
