@@ -1,78 +1,65 @@
-TASKS: Hotel Kong Arthur
-[P] = kan laves parallelt. Efter hver task laves et commit, og alle i gruppen tager tasks.
+# Tasks: Hotel Kong Arthur
 
-FASE 0: Setup
+Revision 29. oktober 2026. Status gælder gennemgået kode på main `d90f0b2` og
+Jazmin `c312835` samt de viste Tableau-skærmbilleder. "Implementeret" er ikke
+det samme som færdigtestet eller flettet ind i main. Tidligere T001–T040-numre
+er bevaret; indhold og US-henvisninger er rettet efter Specify.
 
-T001 Opret repo, branch-regler, README/CONTRIBUTE-skelet og specs/ (constitution, spec, plan, tasks)
-T002 [P] .gitignore og .env.example
-T003 [P] Mappestruktur: backend/ (api, services, repositories, models, schemas), frontend/, tests/
+Status: **I** = implementeret i den angivne kode, **D** = delvist,
+**Å** = åben, **V** = skal verificeres. Gamle testresultater er dokumentation,
+ikke nye testkørsler. Gruppens review kræves før en task lukkes endeligt.
 
-FASE 1: Fundament (blokerer alt andet, US-14)
+| ID | Status | Opgave / konkret resterende arbejde |
+|---|---|---|
+| T001 | D | Repo, specs og CONTRIBUTE findes. Saml dokumentation og branchændringer efter review. |
+| T002 | D | .env.example findes. Kontrollér rigtig `.gitignore`, så `.env` og lokale data ikke medtages; `git.ignore` har ikke samme funktion. |
+| T003 | D | Routes, service og db.js findes. Tilføj repository-lag og nødvendige tests. |
+| T004 | I/V | Jazmins compose.yaml har MySQL, backend og frontend. Swagger UI er i backend. Gentag frisk opstart (US-15). |
+| T005 | D | Express og /health findes. Flyt SQL til datalag; kontrollér databasefejl. |
+| T006 | D | Bookingtabellen findes. Analysemodel for værelser, typer, lande og barsalg skal planlægges og implementeres. |
+| T007 | I/V | Booking-OpenAPI og Swagger UI findes. Verificér kontrakten efter sammenfletning (US-14). |
+| T008 | D | Bookingvalidering og error-beskeder findes. Kontrollér ugyldig JSON og interne fejl. |
+| T009 | I/V | Egen WDC forbinder API til Tableau. Registrér og gentest den præcise Tableau-version (US-13). |
+| T010 | D | Clarify er omskrevet til C-01–C-14. Gruppen skal lukke de åbne beslutninger. |
+| T011 | Å | Kortlæg og indlæs hotelregnearket reproducerbart i MySQL. Dokumentér værelser, datoer, dubletter og demodata. |
+| T012 | Å | Kortlæg og indlæs bardata. Afklar dato, sælger og eventuelle genererede salg. |
+| T013 | Å | Implementér sæsonregel og grænsetests efter C-02/C-03 (US-07). |
+| T014 | D | Bookingservice findes. Udskil repository; afklar og implementér eventuel overlapregel med test. |
+| T015 | I/V | GET/POST/PUT/DELETE /api/bookings findes (US-01–US-04). Gentest 201/200/204/400/404; 409 findes ikke endnu. |
+| T016 | D | Tidligere CRUD-/valideringstest er beskrevet i Feature/Implement.md. Tilføj gentagelige tests og kør dem efter integration. |
+| T017 | Å | Beslut om særskilt værelsestilgængelighed er nødvendig; implementér kun med aftalt regel og register. Det er ikke US-02's bookingliste. |
+| T018 | I/V | Browserens bookingliste, opret, ret og slet findes og er tidligere bekræftet (US-01–US-04). Gentest. |
+| T019 | I/V | Nginx serverer brugerfladen og proxyer /api og /api-docs på Jazmin. Gentest efter integration. |
+| T020 | D | Landekort findes i regnearksdashboardet. Lever landegrundlag fra MySQL/API (FR-06, US-13). |
+| T021 | Å | Belægning med korrekt kapacitet og perioder samt kontroltests (US-06). COUNT(Booking ID) opfylder ikke dette. |
+| T022 | D | Diagram for type/sæson findes, og landefiltrering er vist. Kontroller beregninger og lever analyser via API (US-07/US-08). |
+| T023 | Å | Implementér og verificér årsomsætning for valgt år (US-09). |
+| T024 | D | Opholdslængder og bookingtal er vist. Vælg og verificér ekstra nøgletal med formål/formel (FR-10). |
+| T025 | Å | Afgræns og beregn Helene Christines årssalg; generel bartotal er ikke tilstrækkelig (US-10). |
+| T026 | D | Drikkeomsætning er vist fra regneark. Kontrollér formel og lever via API (US-11). |
+| T027 | Å | Beregn cocktail/kaffe-procenter med aftalt grundlag og sælgerafgrænsning (US-12). |
+| T028 | Å | Simulator er ikke implementeret og ikke nødvendig for manuel CRUD-demo. Beslut om der er et konkret behov. |
+| T029 | D | API-bookingtal er demonstreret 3 → 4 efter Refresh (US-05). Gentag og test senere også ændrede analyseværdier. |
+| T030 | D | API-bookinger kommer ind via WDC. De øvrige viste datakilder skal flyttes fra regneark til API (US-13). |
+| T031 | D | Hotelvisninger findes. Kontrollér fuld dækning, periode, belægning, årsomsætning og ekstra mål (US-06–US-09, FR-10). |
+| T032 | D | Drinkdiagram og bartotal findes. Tilføj verificeret Helenes årssalg og kategoriprocenter (US-10–US-12). |
+| T033 | D | Landeklik er vist. Kontrollér filtermål og tilføj datakilder, perioder og tydelige titler (US-13). |
+| T034 | Å | Sammenlign dashboardets beregninger med underliggende data/API og dokumentér afrunding. |
+| T035 | D | Manuel Refresh virker i lokal demonstration. Gruppen skal afgøre, om automatisk opdatering kræves (C-01/C-14). |
+| T036 | D | Bookingkontrakten findes. Opdatér og test OpenAPI ved alle nye analyse-endpoints (US-14). |
+| T037 | D | Jazmins README beskriver POC-opstart. Saml README, arkitektur og CONTRIBUTE for den integrerede løsning. |
+| T038 | V | Frisk clone/kopi + miljøopsætning + isoleret tom database på en anden gruppedeltagers computer (US-15). |
+| T039 | D | Converge for booking findes; ny samlet Converge er tilføjet. Udfyld efter test mod alle acceptkriterier. |
+| T040 | Å | Forbered demo og forklaring: CRUD, API, MySQL, WDC, Refresh, statiske diagrammer og resterende krav. |
 
-T004 docker-compose med db (MySQL + healthcheck), backend, frontend og swagger-ui
-T005 Backend-skelet i tre lag med health-endpoint og forbindelse til MySQL
-T006 Datamodel og migrering: room_types, rooms, guests, bookings, drinks, bar_sales (reviews valgfri)
-T007 OpenAPI-skelet og swagger-ui-container, der læser openapi.yaml (US-13)
-T008 Fælles fejlformat og validering
-T009 Tableau-spike: hent ét endpoint ind i Tableau Desktop (REST-forbindelse, ellers fallback)
+## Praktisk rækkefølge
 
-FASE 2: Data (kræver T006)
+1. Integrér POC og dokumenter: T001–T009, T015–T019, T037–T038.
+2. Beslut datagrundlag og definitioner: T010–T014.
+3. Byg analyser og verificér beregninger: T020–T027, T034, T036.
+4. Kobl de eksisterende Tableau-visninger til API'et: T029–T035.
+5. Gentag acceptprøve og Converge; forbered fremlæggelse: T039–T040.
 
-T010 Beslut og dokumentér Clarify-punkter: C-01 til C-17
-T011 Seed-script (CSV): idempotent import, fordeling af 214 værelser på 8 typer, genererede datoer og værelsesnumre, is_demo-markering
-T012 [P] Seed af bar (xlsx): 20 cocktails og 10 kaffetyper, demo-salg
-T013 Sæsonregel som service med enhedstest (C-02, C-03)
-
-FASE 3: Booking (US-01, US-02)
-
-T014 Booking-repository og -service med regel mod dobbeltbooking
-T015 Endpoints POST/GET/PUT/DELETE /bookings med 400/404/409
-T016 Tests af CRUD og fejlkoder
-T017 GET /rooms/availability?date= (booket/ledige)
-T018 [P] Frontend: liste, opret/ret-formular og sletning med bekræftelse (Vibe-prompts 1-7)
-T019 Frontend i Docker: nginx og proxy af /api (Vibe-prompt 8)
-
-FASE 4: Hotel-nøgletal (kræver T011, T013)
-
-T020 Gæster pr. land (US-04)
-T021 Belægning pr. periode og måned samt antal bookinger over tid (US-05), enhedstest mod kontrolværdier
-T022 Indtjening pr. værelsestype og sæson, og pr. land (US-06), tests
-T023 Årets indtjening (US-07)
-T024 Selvvalgt nøgletal, fx RevPAR (US-11)
-
-FASE 5: Bar (kræver T012)
-
-T025 [P] Helene Christines årssalg (US-08)
-T026 [P] Omsætning pr. drink og mest solgte (US-09)
-T027 [P] Cocktail/kaffe-fordeling med valgt metode (US-10)
-
-FASE 6: Live-data (US-03)
-
-T028 Simulator, der opretter bookinger og barsalg
-T029 Test: ny eller ændret booking ændrer nøgletallene uden genimport
-
-FASE 7: Dashboard (US-12, kræver fase 4-5 og T009)
-
-T030 Datakilder i Tableau mod endpoints
-T031 Visualiseringer: gæster pr. land, indtjening (type, sæson, land), årets indtjening, selvvalgt nøgletal
-T032 Visualiseringer: Helenes salg, pr. drink, cocktail/kaffe-fordeling
-T033 Filtre (sæson, land, værelsestype, periode) samt titler og perioder på alle nøgletal
-T034 Kontrol af dashboard-tal mod API og kontrolberegning
-T035 Aftal refresh-adfærd (C-14)
-
-FASE 8: Dokumentation og Converge
-
-T036 Gennemgå OpenAPI: formål, parametre og responser for alle endpoints
-T037 README med arkitekturdiagram og CONTRIBUTE.md
-T038 Test af docker-compose up fra frisk clone (US-14)
-T039 Converge: tjek alle user stories mod acceptkriterier, notér hvad der mangler, og tilføj nye tasks
-T040 Forbered præsentationen (10 min: proces, arkitektur, live-demo, hvad mangler) og fordel hvem der forklarer hvad
-
-AFHÆNGIGHEDER
-
-T004-T008 blokerer alt andet, og T006 blokerer fase 2.
-Fase 4 og 5 kræver seed og sæsonregel.
-Dashboardet kræver fase 4-5 og tidlig Tableau-spike (T009).
-T039 køres løbende og til sidst.
-
-Anbefalet rækkefølge: fase 0, 1, 2, 3, derefter 4 og 5 parallelt, så 6, 7 og 8.
+Automatisk Tableau-opdatering tilføjes som en særskilt task, hvis gruppen vælger
+den og har en egnet Tableau-opsætning. Den skal ikke markeres færdig på baggrund
+af den nuværende manuelle demonstration.
