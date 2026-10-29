@@ -1,0 +1,79 @@
+# Converge: Implementeret POC og samlet projektscope
+
+Dato: 29. oktober 2026. Dokumentationsgennemgang, ikke ny kørsel af systemet.
+Grundlag: main `d90f0b2`, Jazmin `c312835`, tidligere testrapport
+`Feature/Implement.md` på Jazmin og brugerens Tableau-skærmbilleder.
+
+## Hvad er dokumenteret?
+
+- Koden indeholder browser-CRUD, Express-API, MySQL og bookingvalidering.
+- Feature/Implement.md rapporterer tidligere HTTP-/MySQL-test af gyldige og
+  ugyldige requests, 404, Swagger UI og persistens. Browserflowet er brugerbekræftet.
+- En egen WDC henter seks bookingfelter fra API'et til Tableau.
+- Brugeren har vist en ny booking i websiden og efterfølgende bookingtal 4 i
+  Tableau, hvor det før var 3. Det dokumenterer manuel hentning af opdaterede data.
+- Dashboardets layout, landekort, opholdslængder, type-/sæsondiagram,
+  drinkdiagram, bartotal og API-KPI er vist på skærmbilleder.
+
+Den lokale `.twbx`-fil er ikke gennemgået. Derfor er alle beregnede felter,
+filtre og acceptkriterier ikke verificeret her. Der er ikke målt automatisk
+opdatering eller en garanteret opdateringshastighed.
+
+## Kravstatus
+
+| Krav | Vurdering og næste kontrol |
+|---|---|
+| US-01–US-04 | Implementeret og tidligere testet i POC. Gentag efter integration til main. |
+| US-05 | Bookingændringer kan hentes igen; manuel Tableau Refresh demonstreret. Aftal interval/automatikkrav. |
+| US-06 | Belægningsprocent fra kapacitet og perioder mangler i gennemgået API. |
+| US-07/US-08 | Relaterede regnearksvisninger findes. Formler, perioder og API-grundlag mangler verifikation/implementering. |
+| US-09 | Årsomsætning med valgt år er ikke dokumenteret opfyldt. |
+| US-10 | Bartotal er vist; Helenes specifikke årssalg er ikke dokumenteret. |
+| US-11 | Omsætning pr. drik er vist. Beregning og levering fra API skal kontrolleres. |
+| US-12 | Kategorier er vist; de krævede procenter og afgrænsning er ikke dokumenteret. |
+| US-13 | Interaktivt dashboard og API-KPI er delvist dokumenteret. Hele dashboardet er endnu ikke API-baseret. |
+| US-14 | Bookingkontrakt/Swagger findes og er tidligere testet. Analysekontrakter mangler. |
+| US-15 | POC-Compose findes og er tidligere kørt. Gentag på en anden computer fra frisk kopi. |
+| FR-10 | Vælg og verificér ekstra nøgletal; opholdslængde er en mulig kandidat. |
+| Tre lag | Separat SQL-repository mangler. |
+| MySQL som eneste datakilde | Ikke opfyldt for de viste regnearksanalyser. |
+
+Dette er en restliste, ikke en ændring af opgavens krav. En task eller user story
+er først afsluttet, når gruppen har kontrolleret dens relevante acceptkriterier.
+
+## Gentagelig acceptprøve for den nuværende POC
+
+| Trin | Handling | Forventet resultat |
+|---|---|---|
+| 1 | Start fra dokumenteret kodekopi med udfyldt .env og Compose. | Frontend, API og Swagger UI kan åbnes. |
+| 2 | Notér antal API-bookinger og antal i Tableau efter Refresh. | Samme antal ved samme afgrænsning. |
+| 3 | Opret én tydelig demobooking i browseren. | Booking gemmes og kan hentes via API. |
+| 4 | Se Tableau før Refresh, og udfør derefter Refresh af API-datakilden. | Ingen automatisk ændring loves. Efter Refresh stiger tallet med én. |
+| 5 | Ret datoer og genindlæs bookinglisten; Refresh Tableau. | Gemte datoer vises, og antal nætter følger datoforskellen. |
+| 6 | Forsøg ugyldig opdatering gennem API/Swagger. | HTTP 400 og ingen ændring af tidligere gemte værdier. |
+| 7 | Slet kun den oprettede demobooking; Refresh Tableau. | Booking er væk, og antallet går tilbage. |
+| 8 | Genstart uden at slette volumen. | Øvrige gemte bookinger bevares. |
+| 9 | Klik et land på dashboardet og fjern valget igen. | Kun de tilsigtede hotelvisninger filtreres; API-KPI og barsalg ændres ikke uden relevant datakobling. |
+
+Udfyld ved kørsel: dato, tester, commit, Tableau-version, før/efter-værdier,
+bestået/fejlet og eventuelle fejl. Brug fiktive gæsteoplysninger til demo.
+
+## Kildekort
+
+| Oplysning | Primær kilde |
+|---|---|
+| De samlede krav | specs/Specify på main |
+| Arkitekturprincipper | specs/Constitution på main |
+| Bookingfelter og validering | backend/src/services/bookingService.js på Jazmin |
+| Metoder og HTTP-svar | backend/src/routes/bookings.js og backend/openapi.yaml på Jazmin |
+| MySQL-skema og eksempeldata | mysql/init.sql på Jazmin |
+| Tjenester, porte og persistens | compose.yaml på Jazmin |
+| Proxy og Swagger-visning | frontend/nginx.conf og backend/src/app.js på Jazmin |
+| Tableau-felter og hentning | frontend/tableau.html og frontend/tableau.js på Jazmin |
+| Historiske analysedatasæt | Datasets/*.xlsx på main; konkret brug kræver workbookkontrol |
+| Tidligere bookingtest | Feature/Implement.md på Jazmin |
+| Dashboardlayout og 3 → 4 | Brugerens skærmbilleder fra den lokale demonstration |
+
+Feature-mappen beskriver den tidligere afgrænsede booking-POC. Dens udsagn om,
+at Tableau ikke er en del af POC'en, er historisk: Tableau blev tilføjet senere.
+Brug denne samlede Converge sammen med de bevarede testresultater.
