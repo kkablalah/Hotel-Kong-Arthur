@@ -1,0 +1,916 @@
+openapi: 3.0.3
+info:
+  title: Hotel Kong Arthur - Historical Data Import API
+  description: |
+    REST API extensions for importing historical hotel booking and cocktail bar sales data.
+    This API extends the existing Booking API and maintains the three-layer architecture.
+    
+    **Important Notes:**
+    - Historical data is read-only after import
+    - No dates or employee attribution are fabricated
+    - All source data values are preserved exactly as provided
+    - Room Type is stored as STRING (e.g., "Spa Executive", "Standard Double"), NOT as numeric codes
+    - Import uses batch tracking to prevent duplicate imports
+    
+    **Blocked Functionality:**
+    - Season-based analytics depend on BL-01 (Season Boundary Definitions)
+    - Employee attribution depends on BL-02 (Helene Christine Attribution Method)
+    - Annual reporting for historical data depends on BL-03 (Synthetic Date Generation)
+  version: 1.2.0
+  contact:
+    name: Hotel Kong Arthur Development Team
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+  - url: http://backend:3000/api
+    description: Docker internal network
+
+tags:
+  - name: import
+    description: Historical data import operations
+  - name: historical-bookings
+    description: Query historical hotel booking data
+  - name: historical-drinks
+    description: Query historical cocktail bar sales data
+
+paths:
+  /import/hotel:
+    post:
+      tags: [import]
+      summary: Import historical hotel booking data
+      description: |
+        Imports hotel booking data from an Excel file (expected: international_names_with_rooms_1000.xlsx).
+        
+        **Process:**
+        1. Validates file format and structure
+        2. Calculates file hash for duplicate detection (batch-level)
+        3. Extracts and validates each record with source row numbers
+        4. Detects already-imported files using batch tracking
+        5. Inserts valid records in a single transaction
+        6. Returns detailed import report
+        
+        **Constraints:**
+        - File must be .xlsx format
+        - Maximum file size: 10MB
+        - Expected columns: First Name, Family Name, Country, Room Type, Days Rented, Season, Price
+        - Room Type values: "Standard Single", "Standard Double", "Superior Double", "Grand Lit", "Junior Suite", "Suite", "LOFT Suite", "Spa Executive"
+        - No data fabrication or transformation
+      operationId: importHistoricalHotelData
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file containing historical hotel booking data
+      responses:
+        '200':
+          description: Import completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportReport'
+        '400':
+          description: Validation error (invalid file, wrong structure, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - file already imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/drinks:
+    post:
+      tags: [import]
+      summary: Import historical cocktail bar sales data
+      description: |
+        Imports cocktail bar sales data from an Excel file (expected: drinks_menu_with_sales.xlsx).
+        
+        **Process:** Same as hotel import with batch tracking
+        
+        **Constraints:**
+        - File must be .xlsx format
+        - Maximum file size: 10MB
+        - Expected columns: Drink Name, Category, Price (DKK), Units Sold
+        - Category values: "Cocktail", "Coffee"
+        - No employee attribution fabricated
+        
+        **Note:** Employee-specific calculations (e.g., Helene Christine) are BLOCKED pending BL-02 approval
+      operationId: importHistoricalDrinkData
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file containing historical cocktail bar sales data
+      responses:
+        '200':
+          description: Import completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportReport'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - file already imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/status:
+    get:
+      tags: [import]
+      summary: Get import status and history
+      description: |
+        Returns information about all import operations including:
+        - List of completed imports
+        - Summary statistics
+        - Latest import details
+      operationId: getImportStatus
+      responses:
+        '200':
+          description: Import status information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatus'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/hotel:
+    get:
+      tags: [historical-bookings]
+      summary: List all historical hotel bookings
+      description: |
+        Returns all imported historical hotel booking records.
+        Supports filtering by various criteria.
+        
+        **Note:** Season-based filtering uses the string season labels from the source data.
+        Calendar-based season calculations are BLOCKED pending BL-01.
+      operationId: listHistoricalBookings
+      parameters:
+        - in: query
+          name: country
+          schema:
+            type: string
+          description: Filter by guest country
+        - in: query
+          name: season
+          schema:
+            type: string
+            enum: [low, mid, high]
+          description: Filter by season label (from source data)
+        - in: query
+          name: room_type
+          schema:
+            type: string
+          description: Filter by room type name (e.g., "Standard Double", "Spa Executive")
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          description: Maximum number of records to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of records to skip
+        - in: query
+          name: batch_id
+          schema:
+            type: string
+          description: Filter by import batch ID (file hash)
+      responses:
+        '200':
+          description: List of historical bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HistoricalBooking'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/hotel/{id}:
+    get:
+      tags: [historical-bookings]
+      summary: Get a specific historical hotel booking by ID
+      operationId: getHistoricalBookingById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Historical booking ID
+      responses:
+        '200':
+          description: Historical booking record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricalBooking'
+        '404':
+          description: Historical booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/drinks:
+    get:
+      tags: [historical-drinks]
+      summary: List all historical drink sales
+      description: |
+        Returns all imported historical cocktail bar drink sales records.
+        
+        **Note:** Employee-specific queries are BLOCKED pending BL-02 approval
+      operationId: listHistoricalDrinks
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [Cocktail, Coffee]
+          description: Filter by drink category
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Maximum number of records to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of records to skip
+        - in: query
+          name: batch_id
+          schema:
+            type: string
+          description: Filter by import batch ID (file hash)
+      responses:
+        '200':
+          description: List of historical drink sales
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HistoricalDrink'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/drinks/{id}:
+    get:
+      tags: [historical-drinks]
+      summary: Get a specific historical drink sale by ID
+      operationId: getHistoricalDrinkById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Historical drink sale ID
+      responses:
+        '200':
+          description: Historical drink sale record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricalDrink'
+        '404':
+          description: Historical drink sale not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/batches:
+    get:
+      tags: [import]
+      summary: List all import batches
+      description: |
+        Returns all import batch records for audit and tracking purposes.
+      operationId: listImportBatches
+      parameters:
+        - in: query
+          name: file_name
+          schema:
+            type: string
+          description: Filter by source file name
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, completed, failed]
+          description: Filter by batch status
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Maximum number of records to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of records to skip
+      responses:
+        '200':
+          description: List of import batches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImportBatch'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /import/hotel/revenue-by-season:
+    get:
+      tags: [historical-bookings]
+      summary: Calculate revenue by season
+      description: |
+        **BLOCKED**: This endpoint is BLOCKED pending BL-01 (Season Boundary Definitions).
+        
+        Once BL-01 is resolved, this will calculate revenue grouped by season
+        using the season labels from the historical data.
+        
+        For new bookings with actual dates, calendar-based season calculations
+        will use the approved boundaries.
+      operationId: getRevenueBySeason
+      responses:
+        '200':
+          description: Revenue by season
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        season:
+                          type: string
+                          enum: [low, mid, high]
+                        revenue:
+                          type: number
+                          format: decimal
+                        record_count:
+                          type: integer
+        '503':
+          description: Service unavailable - blocked pending group approval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Endpoint blocked pending BL-01 group approval"
+
+  /import/drinks/helene-christine:
+    get:
+      tags: [historical-drinks]
+      summary: Calculate sales attributed to Helene Christine
+      description: |
+        **BLOCKED**: This endpoint is BLOCKED pending BL-02 (Helene Christine Attribution Method).
+        
+        Once BL-02 is resolved, this will calculate total sales revenue attributed
+        to Helene Christine based on the approved demonstration data approach.
+        
+        **Current Status**: Historical drinks data contains NO employee attribution.
+        Requires group decision on acceptable demonstration approach.
+      operationId: getHeleneChristineSales
+      responses:
+        '200':
+          description: Helene Christine sales data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      total_revenue:
+                        type: number
+                        format: decimal
+                        description: Total revenue in DKK
+                      units_sold:
+                        type: integer
+                      record_count:
+                        type: integer
+        '503':
+          description: Service unavailable - blocked pending group approval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Endpoint blocked pending BL-02 group approval"
+
+  /import/hotel/annual-revenue:
+    get:
+      tags: [historical-bookings]
+      summary: Calculate annual hotel revenue
+      description: |
+        **BLOCKED**: This endpoint is BLOCKED pending BL-03 (Synthetic Date Generation).
+        
+        Once BL-03 is resolved, this will calculate annual hotel revenue.
+        
+        **Current Status**: Historical booking data contains NO date fields.
+        Annual calculations for historical data require group decision on date generation.
+        
+        For new bookings with actual dates, annual reporting will work normally.
+      operationId: getAnnualRevenue
+      parameters:
+        - in: query
+          name: year
+          schema:
+            type: integer
+            minimum: 2020
+            maximum: 2030
+          description: Year for which to calculate revenue
+      responses:
+        '200':
+          description: Annual revenue data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      year:
+                        type: integer
+                      revenue:
+                        type: number
+                        format: decimal
+                      record_count:
+                        type: integer
+        '503':
+          description: Service unavailable - blocked pending group approval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Endpoint blocked pending BL-03 group approval"
+
+components:
+  schemas:
+    HistoricalBooking:
+      type: object
+      description: Historical hotel booking record imported from source Excel file. Room Type is STRING (e.g., "Spa Executive", "Standard Double").
+      properties:
+        id:
+          type: integer
+          description: Auto-incrementing primary key
+          example: 1
+        first_name:
+          type: string
+          description: Guest first name
+          example: "Liam"
+          maxLength: 100
+        family_name:
+          type: string
+          description: Guest family name
+          example: "Zhang"
+          maxLength: 100
+        country:
+          type: string
+          description: Guest country of origin
+          example: "China"
+          nullable: true
+          maxLength: 100
+        room_type:
+          type: string
+          description: Room type name from source data (STRING, not numeric)
+          example: "Standard Double"
+          maxLength: 50
+          nullable: true
+        days_rented:
+          type: integer
+          description: Number of days rented
+          example: 5
+          minimum: 1
+          nullable: true
+        season:
+          type: string
+          description: Season label from source data
+          enum: [low, mid, high]
+          example: "high"
+          nullable: true
+        price:
+          type: number
+          format: decimal
+          description: Price in DKK
+          example: 2577.00
+          nullable: true
+          minimum: 0
+        source_file:
+          type: string
+          description: Name of the source Excel file
+          example: "international_names_with_rooms_1000.xlsx"
+          maxLength: 255
+        source_row_number:
+          type: integer
+          description: Row number in the source file (1-indexed, excludes header)
+          example: 2
+          minimum: 1
+          nullable: true
+        import_batch:
+          type: string
+          description: SHA-256 hash of the source file content (for batch tracking)
+          example: "a1b2c3d4e5...64chars"
+          maxLength: 64
+        import_timestamp:
+          type: string
+          format: date-time
+          description: When the record was imported
+          example: "2026-10-28T10:30:00Z"
+      required:
+        - id
+        - first_name
+        - family_name
+        - source_file
+        - import_batch
+        - import_timestamp
+
+    HistoricalDrink:
+      type: object
+      description: Historical cocktail bar drink sale record imported from source Excel file
+      properties:
+        id:
+          type: integer
+          description: Auto-incrementing primary key
+          example: 1
+        drink_name:
+          type: string
+          description: Name of the drink
+          example: "Margarita"
+          maxLength: 100
+        category:
+          type: string
+          description: Drink category
+          enum: [Cocktail, Coffee]
+          example: "Cocktail"
+        price_dkk:
+          type: number
+          format: decimal
+          description: Price in Danish Kroner
+          example: 85.00
+          nullable: true
+          minimum: 0
+        units_sold:
+          type: integer
+          description: Number of units sold
+          example: 150
+          nullable: true
+          minimum: 0
+        source_file:
+          type: string
+          description: Name of the source Excel file
+          example: "drinks_menu_with_sales.xlsx"
+          maxLength: 255
+        source_row_number:
+          type: integer
+          description: Row number in the source file (1-indexed, excludes header)
+          example: 2
+          minimum: 1
+          nullable: true
+        import_batch:
+          type: string
+          description: SHA-256 hash of the source file content (for batch tracking)
+          example: "a1b2c3d4e5...64chars"
+          maxLength: 64
+        import_timestamp:
+          type: string
+          format: date-time
+          description: When the record was imported
+          example: "2026-10-28T10:30:00Z"
+      required:
+        - id
+        - drink_name
+        - category
+        - source_file
+        - import_batch
+        - import_timestamp
+
+    ImportBatch:
+      type: object
+      description: Import batch tracking record
+      properties:
+        batch_id:
+          type: string
+          description: SHA-256 hash of source file content
+          example: "a1b2c3d4e5...64chars"
+          maxLength: 64
+        file_name:
+          type: string
+          description: Name of the source file
+          example: "international_names_with_rooms_1000.xlsx"
+          maxLength: 255
+        file_size:
+          type: integer
+          description: Size of file in bytes
+          example: 48973
+        file_hash:
+          type: string
+          description: SHA-256 hash of file content (same as batch_id)
+          example: "a1b2c3d4e5...64chars"
+          maxLength: 64
+        status:
+          type: string
+          enum: [pending, completed, failed]
+          description: Import batch status
+          example: "completed"
+        total_records:
+          type: integer
+          description: Total records in file (excluding header)
+          example: 1001
+        imported_count:
+          type: integer
+          description: Number of records successfully imported
+          example: 1001
+        rejected_count:
+          type: integer
+          description: Number of records rejected due to validation errors
+          example: 0
+        duplicate_count:
+          type: integer
+          description: Number of records that were duplicates (within this import)
+          example: 0
+        started_at:
+          type: string
+          format: date-time
+          description: When import started
+          example: "2026-10-28T10:30:00Z"
+        completed_at:
+          type: string
+          format: date-time
+          description: When import completed
+          example: "2026-10-28T10:30:05Z"
+          nullable: true
+        error_message:
+          type: string
+          description: Error message if import failed
+          example: "Invalid file format"
+          nullable: true
+      required:
+        - batch_id
+        - file_name
+        - file_hash
+        - status
+        - total_records
+        - started_at
+
+    ImportReport:
+      type: object
+      description: Report generated after import operation
+      properties:
+        file_name:
+          type: string
+          description: Name of the imported file
+          example: "international_names_with_rooms_1000.xlsx"
+        file_hash:
+          type: string
+          description: SHA-256 hash of the source file content
+          example: "a1b2c3d4e5...64chars"
+          maxLength: 64
+        total_records:
+          type: integer
+          description: Total number of records in the file (excluding header)
+          example: 1001
+        imported_count:
+          type: integer
+          description: Number of records successfully imported
+          example: 1001
+        rejected_count:
+          type: integer
+          description: Number of records rejected due to validation errors
+          example: 0
+        duplicate_count:
+          type: integer
+          description: Number of records skipped as duplicates within this file
+          example: 0
+        errors:
+          type: array
+          description: List of validation errors for rejected records
+          items:
+            $ref: '#/components/schemas/ImportError'
+        batch_id:
+          type: string
+          description: The import batch ID for tracking
+          example: "a1b2c3d4e5...64chars"
+          maxLength: 64
+        import_timestamp:
+          type: string
+          format: date-time
+          description: When the import was completed
+          example: "2026-10-28T10:30:05Z"
+
+    ImportError:
+      type: object
+      description: Details of a single validation error
+      properties:
+        source_row_number:
+          type: integer
+          description: Row number in the source file (1-indexed, excludes header)
+          example: 2
+          minimum: 1
+        field:
+          type: string
+          description: Name of the field with the error
+          example: "first_name"
+        value:
+          type: string
+          description: The invalid value (string representation)
+          example: ""
+        reason:
+          type: string
+          description: Human-readable reason for rejection
+          example: "Required field missing"
+
+    ImportStatus:
+      type: object
+      description: Status information about import operations
+      properties:
+        total_imports:
+          type: integer
+          description: Total number of import operations performed
+          example: 2
+        latest_import:
+          $ref: '#/components/schemas/ImportReport'
+        all_imports:
+          type: array
+          items:
+            type: object
+            properties:
+              batch_id:
+                type: string
+              file_name:
+                type: string
+              imported_count:
+                type: integer
+              import_timestamp:
+                type: string
+                format: date-time
+        blocked_endpoints:
+          type: array
+          description: List of endpoints blocked pending group approval
+          items:
+            type: object
+            properties:
+              endpoint:
+                type: string
+                example: "/import/hotel/revenue-by-season"
+              blocked_by:
+                type: string
+                example: "BL-01"
+              description:
+                type: string
+
+    Pagination:
+      type: object
+      description: Pagination metadata for list responses
+      properties:
+        limit:
+          type: integer
+          description: Maximum number of records returned
+          example: 100
+        offset:
+          type: integer
+          description: Number of records skipped
+          example: 0
+        total:
+          type: integer
+          description: Total number of records matching the query
+          example: 1001
+
+    Error:
+      type: object
+      description: Standard error response format
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Invalid file format"
+        detail:
+          type: string
+          description: Additional error details (optional)
+          example: "Expected .xlsx file, got .csv"
