@@ -50,4 +50,28 @@ Ingen hemmeligheder (adgangskoder, nøgler) i repoet. Konfiguration kommer fra m
 
 Constitutionen gælder over alle andre aftaler i projektet. Ændringer kræver enighed i gruppen og dokumenteres med dato og begrundelse. Spec, plan og tasks skal altid kunne begrundes ud fra principperne her.
 
+## Statusnotat til revisionen 29. oktober 2026
+
+Kerneprincipperne ovenfor er bevaret som projektets mål. Den nuværende POC
+opfylder dem kun delvist:
+
+- Node.js/Express er det implementerede backendvalg, jf. Plan. Programmeringssproget
+  er frit i disse rammer; Python er ikke et vedtaget krav her.
+- Routes kalder en service, men SQL skal flyttes til repositories, før den
+  beskrevne trelagsopdeling er opfyldt.
+- Bookingdata ligger i MySQL. De viste historiske Tableau-analyser læser fortsat
+  regneark direkte. MySQL som eneste datakilde er derfor endnu ikke opfyldt.
+- Swagger UI kører i backend-containeren; der kræves ikke en separat container
+  for at vise dokumentationen. MySQL, backend og frontend startes med Jazmins
+  `docker compose -f compose.yaml up --build -d` efter dokumenteret miljøopsætning.
+  Tableau Public/Desktop er et separat analyseværktøj på brugerens computer.
+- Tableau-connectoren henter bookingdata ved manuel Refresh. Automatisk opdatering
+  og samtlige analyser via API'et er ikke implementeret.
+- AI-genererede forslag til nøgletal eller sæsonregler tæller først som aftaler,
+  når gruppen har valgt og dokumenteret dem i Clarify.
+
+Notatet registrerer forskelle mellem mål og implementering. Det ændrer ikke
+vedtagelsesdato eller ophæver krav. Eventuelle ændringer af kerneprincipperne
+følger fortsat governance-reglen ovenfor.
+
 **Version:** 1.0.0 | **Vedtaget:** 2026-10-28 | **Senest ændret:** 2026-10-28
