@@ -37,7 +37,7 @@ router.get('/bookings/:id', async (req, res, next) => {
 // Opret ny booking
 router.post('/bookings', async (req, res, next) => {
   try {
-    const booking = await createBooking(req.body);
+    const booking = await createBooking(req.body || {});
     res.status(201).json(booking);
   } catch (err) {
     if (err.status) {
@@ -50,7 +50,7 @@ router.post('/bookings', async (req, res, next) => {
 // Opdater eksisterende booking
 router.put('/bookings/:id', async (req, res, next) => {
   try {
-    const booking = await updateBooking(req.params.id, req.body);
+    const booking = await updateBooking(req.params.id, req.body || {});
     if (!booking) {
       return res.status(404).json({ error: 'Booking ikke fundet' });
     }

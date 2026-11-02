@@ -10,7 +10,7 @@
     header { background: #111827; color: #fff; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
     header h1 { font-size: 1.25rem; }
     .badge { background: #3b82f6; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; }
-    main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+    main { max-width: 1280px; margin: 1.5rem auto; padding: 0 1rem; }
     .toolbar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
     button { background: #111827; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
     button:hover { background: #1f2937; }
@@ -43,6 +43,33 @@
     .api-link:hover { text-decoration: underline; }
     .edit-form { display: none; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; background: #f9fafb; padding: 0.75rem; border-radius: 6px; border: 1px dashed #d1d5db; }
     .edit-form.show { display: grid; }
+    .section { margin: 1.5rem 0; }
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 0.75rem; }
+    .section-heading h2 { font-size: 1.1rem; }
+    .muted { color: #6b7280; font-size: 0.85rem; }
+    .filters, .panel, .kpi { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .filters { display: flex; align-items: end; gap: 0.75rem; flex-wrap: wrap; }
+    .filters > div { min-width: 150px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.75rem; margin: 0.75rem 0; }
+    .kpi label { color: #6b7280; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+    .kpi strong { display: block; font-size: 1.6rem; margin: 0.2rem 0; }
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0.75rem; }
+    .category { margin: 0.75rem 0 1.25rem; }
+    .category h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+    .product { display: grid; grid-template-columns: minmax(110px, 1fr) 2fr 55px; gap: 0.5rem; align-items: center; margin: 0.45rem 0; font-size: 0.8rem; }
+    .historical .product { grid-template-columns: minmax(100px, 1fr) 2fr minmax(145px, auto); }
+    .bar-track { height: 0.6rem; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+    .bar-fill { height: 100%; background: #059669; border-radius: inherit; }
+    .product:nth-child(even) .bar-fill { background: #2563eb; }
+    .inline-form { display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap; margin-top: 0.75rem; }
+    .inline-form > div { flex: 1; min-width: 120px; }
+    .inline-form button { min-height: 36px; }
+    @media (max-width: 640px) {
+      header { padding: 1rem; align-items: flex-start; gap: 0.5rem; }
+      .api-link { margin: 0; }
+      th, td { padding: 0.5rem 0.3rem; font-size: 0.75rem; }
+      table { display: block; overflow-x: auto; }
+    }
   </style>
 </head>
 <body>
@@ -55,6 +82,64 @@
   </header>
 
   <main>
+    <section class="section" aria-labelledby="dashboardTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="dashboardTitle">Driftsdashboard</h2>
+          <p class="muted">Nøgletal opdateres automatisk hvert 15. sekund.</p>
+        </div>
+      </div>
+      <div class="filters">
+        <div><label for="periodFrom">Fra</label><input id="periodFrom" type="date"/></div>
+        <div><label for="periodTo">Til</label><input id="periodTo" type="date"/></div>
+        <button id="refreshDashboard" type="button">Opdater nøgletal</button>
+      </div>
+      <div class="kpis" aria-live="polite">
+        <article class="kpi"><label>Belægning</label><strong id="occupancyValue">–</strong><span id="occupancyDetail" class="muted">Vælg en periode</span></article>
+        <article class="kpi"><label>Værelsesindtægt</label><strong id="roomRevenueValue">–</strong><span id="bookingCount" class="muted"></span></article>
+        <article class="kpi"><label>Gæstetilfredshed</label><strong id="feedbackValue">–</strong><span id="feedbackCount" class="muted">Ingen feedback endnu</span></article>
+        <article class="kpi"><label>Baromsætning · historisk + registreret</label><strong id="barRevenueValue">–</strong><span id="barUnits" class="muted"></span></article>
+      </div>
+      <div class="dashboard-grid">
+        <article class="panel">
+          <div class="section-heading">
+            <div><h2>Barens salgsmix</h2><p class="muted">Andel af solgte enheder inden for hver kategori.</p></div>
+          </div>
+          <p id="salesAttribution" class="muted"></p>
+          <div id="salesBreakdown"></div>
+        </article>
+        <article class="panel">
+          <h2>Registrer barsalg</h2>
+          <p class="muted">Nye salg gemmes med tidspunkt og medarbejder.</p>
+          <form id="barSaleForm" class="inline-form">
+            <div><label for="saleProduct">Produkt</label><select id="saleProduct" required></select></div>
+            <div><label for="saleQuantity">Antal</label><input id="saleQuantity" type="number" min="1" max="1000" value="1" required/></div>
+            <button type="submit" class="primary">Registrer salg</button>
+          </form>
+          <hr style="border:0;border-top:1px solid #e5e7eb;margin:1.25rem 0"/>
+          <h2>Registrer gæstefeedback</h2>
+          <p class="muted">Skala fra 1 til 5; bruges til gennemsnitlig tilfredshed.</p>
+          <form id="feedbackForm" class="inline-form">
+            <div><label for="feedbackName">Navn (valgfrit)</label><input id="feedbackName" maxlength="100"/></div>
+            <div><label for="feedbackRating">Vurdering</label><select id="feedbackRating" required><option value="5">5 – Meget tilfreds</option><option value="4">4 – Tilfreds</option><option value="3">3 – Neutral</option><option value="2">2 – Utilfreds</option><option value="1">1 – Meget utilfreds</option></select></div>
+            <button type="submit">Gem feedback</button>
+          </form>
+        </article>
+      </div>
+      <div class="dashboard-grid" style="margin-top:0.75rem">
+        <article class="panel historical">
+          <h2>Historisk hoteldata pr. sæson</h2>
+          <p id="historyAttribution" class="muted"></p>
+          <p><strong id="historyTotals"></strong></p>
+          <div id="historicalBreakdown"></div>
+        </article>
+        <article class="panel historical">
+          <h2>Historisk omsætning pr. værelsestype</h2>
+          <div id="roomTypeBreakdown"></div>
+        </article>
+      </div>
+    </section>
+
     <div class="toolbar">
       <button id="btnToggleForm" class="primary">+ Opret booking</button>
       <span style="flex:1"></span>
@@ -67,6 +152,7 @@
       <div><label>Værelsesnr.</label><input type="number" id="fRoomNumber" min="1" required/></div>
       <div><label>Indtjekning</label><input type="date" id="fCheckIn" required/></div>
       <div><label>Udtjekning</label><input type="date" id="fCheckOut" required/></div>
+      <div><label>Pris pr. nat (DKK)</label><input type="number" id="fNightlyRate" min="1" step="0.01" value="1500" required/></div>
       <div><label>Status</label><select id="fStatus">
         <option value="confirmed">Bekræftet</option>
         <option value="checked_in">Indtjekket</option>
@@ -83,7 +169,7 @@
     <table id="bookingsTable">
       <thead>
         <tr>
-          <th>ID</th><th>Gæst</th><th>E-mail</th><th>Værelse</th><th>Indtjek</th><th>Udtjek</th><th>Status</th><th>Oprettet</th><th>Handlinger</th>
+          <th>ID</th><th>Gæst</th><th>E-mail</th><th>Værelse</th><th>Indtjek</th><th>Udtjek</th><th>Pris/nat</th><th>Status</th><th>Oprettet</th><th>Handlinger</th>
         </tr>
       </thead>
       <tbody id="bookingsBody"></tbody>
@@ -94,6 +180,7 @@
 
   <script>
     const API = '/api/bookings';
+    const ANALYTICS_API = '/api/analytics/overview';
     const form = document.getElementById('bookingForm');
     const tableBody = document.getElementById('bookingsBody');
     const emptyState = document.getElementById('emptyState');
@@ -102,7 +189,192 @@
     const btnSave = document.getElementById('btnSave');
     const btnCancel = document.getElementById('btnCancel');
     const fId = document.getElementById('fId');
-    const fields = ['fGuestName','fEmail','fRoomNumber','fCheckIn','fCheckOut','fStatus'];
+    const fields = ['fGuestName','fEmail','fRoomNumber','fCheckIn','fCheckOut','fNightlyRate','fStatus'];
+
+    const formatCurrency = (amount) => new Intl.NumberFormat('da-DK', {
+      style: 'currency',
+      currency: 'DKK',
+      maximumFractionDigits: 0,
+    }).format(amount);
+
+    function setDefaultPeriod() {
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      document.getElementById('periodFrom').value = iso(first);
+      document.getElementById('periodTo').value = iso(last);
+    }
+
+    async function loadOverview() {
+      const from = document.getElementById('periodFrom').value;
+      const to = document.getElementById('periodTo').value;
+      const params = new URLSearchParams({ from, to });
+      const response = await fetch(`${ANALYTICS_API}?${params}`);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Kunne ikke hente nøgletal');
+      }
+      renderOverview(await response.json());
+    }
+
+    function renderOverview(data) {
+      document.getElementById('occupancyValue').textContent = `${data.occupancy.ratePercent}%`;
+      document.getElementById('occupancyDetail').textContent =
+        `${data.occupancy.occupiedRoomNights} af ${data.occupancy.capacityRoomNights} mulige værelsesnætter`;
+      document.getElementById('roomRevenueValue').textContent = formatCurrency(data.roomRevenueDkk);
+      document.getElementById('bookingCount').textContent = `${data.bookings} bookinger i perioden`;
+      document.getElementById('feedbackValue').textContent =
+        data.feedback.averageRating === null ? 'Ingen data' : `${data.feedback.averageRating} / 5`;
+      document.getElementById('feedbackCount').textContent = `${data.feedback.count} gæstevurderinger`;
+
+      const allProducts = data.bar.categories.flatMap((category) => category.products);
+      const totalUnits = allProducts.reduce((total, product) => total + product.units, 0);
+      const totalRevenue = data.bar.categories.reduce((total, category) => total + category.totalRevenueDkk, 0);
+      document.getElementById('barRevenueValue').textContent = formatCurrency(totalRevenue);
+      document.getElementById('barUnits').textContent = `${totalUnits.toLocaleString('da-DK')} solgte enheder`;
+      document.getElementById('salesAttribution').textContent =
+        `${data.bar.baselineDescription} ${data.bar.liveSalesDescription}`;
+
+      document.getElementById('historyAttribution').textContent = data.historical.sourceDescription;
+      document.getElementById('historyTotals').textContent =
+        `${data.historical.totalStays.toLocaleString('da-DK')} ophold · ${formatCurrency(data.historical.totalRevenueDkk)} samlet omsætning`;
+      renderHistoricalBars(
+        'historicalBreakdown',
+        data.historical.seasons,
+        (season) => season.revenueDkk,
+        (season) => `${season.stays} ophold · ${formatCurrency(season.averageStayRevenueDkk)} pr. ophold`,
+        (season) => ({ low: 'Lav sæson', mid: 'Mellemsæson', high: 'Højsæson' })[season.name]
+      );
+      renderHistoricalBars(
+        'roomTypeBreakdown',
+        data.historical.roomTypes,
+        (roomType) => roomType.revenueDkk,
+        (roomType) => `${roomType.stays} ophold · ${formatCurrency(roomType.revenueDkk)}`,
+        (roomType) => roomType.name
+      );
+
+      const breakdown = document.getElementById('salesBreakdown');
+      breakdown.replaceChildren();
+      for (const category of data.bar.categories) {
+        const section = document.createElement('section');
+        section.className = 'category';
+        const heading = document.createElement('h3');
+        heading.textContent = `${category.name} · ${category.totalUnits.toLocaleString('da-DK')} stk.`;
+        section.appendChild(heading);
+        const maximum = Math.max(...category.products.map((product) => product.units), 1);
+        for (const product of category.products) {
+          const row = document.createElement('div');
+          row.className = 'product';
+          const name = document.createElement('span');
+          name.textContent = product.name;
+          const track = document.createElement('span');
+          track.className = 'bar-track';
+          const fill = document.createElement('span');
+          fill.className = 'bar-fill';
+          fill.style.width = `${(product.units / maximum) * 100}%`;
+          track.appendChild(fill);
+          const share = document.createElement('strong');
+          share.textContent = `${product.sharePercent}%`;
+          row.append(name, track, share);
+          section.appendChild(row);
+        }
+        breakdown.appendChild(section);
+      }
+    }
+
+    function renderHistoricalBars(targetId, rows, valueForRow, detailForRow, labelForRow) {
+      const target = document.getElementById(targetId);
+      target.replaceChildren();
+      const maximum = Math.max(...rows.map(valueForRow), 1);
+      for (const item of rows) {
+        const row = document.createElement('div');
+        row.className = 'product';
+        const label = document.createElement('span');
+        label.textContent = labelForRow(item);
+        const track = document.createElement('span');
+        track.className = 'bar-track';
+        const fill = document.createElement('span');
+        fill.className = 'bar-fill';
+        fill.style.width = `${(valueForRow(item) / maximum) * 100}%`;
+        track.appendChild(fill);
+        const detail = document.createElement('strong');
+        detail.textContent = detailForRow(item);
+        detail.style.fontSize = '0.72rem';
+        row.append(label, track, detail);
+        target.appendChild(row);
+      }
+    }
+
+    async function loadBarMenu() {
+      const response = await fetch('/api/bar-menu');
+      if (!response.ok) throw new Error('Kunne ikke hente cocktail- og kaffemenu');
+      const menu = await response.json();
+      const select = document.getElementById('saleProduct');
+      select.replaceChildren();
+      for (const item of menu) {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.name} (${item.category}) · ${formatCurrency(item.priceDkk)}`;
+        select.appendChild(option);
+      }
+    }
+
+    async function refreshDashboard() {
+      try {
+        await Promise.all([loadOverview(), loadBarMenu()]);
+      } catch (err) {
+        console.error(err);
+        showMsg(err.message, 'error');
+      }
+    }
+
+    document.getElementById('refreshDashboard').addEventListener('click', refreshDashboard);
+    document.getElementById('periodFrom').addEventListener('change', () => loadOverview().catch((err) => showMsg(err.message, 'error')));
+    document.getElementById('periodTo').addEventListener('change', () => loadOverview().catch((err) => showMsg(err.message, 'error')));
+
+    document.getElementById('barSaleForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const response = await fetch('/api/bar-sales', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: Number(document.getElementById('saleProduct').value),
+            quantity: Number(document.getElementById('saleQuantity').value),
+            staffMember: 'Helene Christine',
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Kunne ikke registrere barsalget');
+        showMsg('Barsalg registreret', 'success');
+        document.getElementById('saleQuantity').value = '1';
+        await loadOverview();
+      } catch (err) {
+        showMsg(err.message, 'error');
+      }
+    });
+
+    document.getElementById('feedbackForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            guestName: document.getElementById('feedbackName').value,
+            rating: Number(document.getElementById('feedbackRating').value),
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Kunne ikke gemme gæstefeedback');
+        showMsg('Feedback gemt', 'success');
+        document.getElementById('feedbackForm').reset();
+        await loadOverview();
+      } catch (err) {
+        showMsg(err.message, 'error');
+      }
+    });
 
     let editingId = null;
 
@@ -164,6 +436,7 @@
           <td>${b.roomNumber}</td>
           <td>${formatDate(b.checkIn)}</td>
           <td>${formatDate(b.checkOut)}</td>
+          <td>${formatCurrency(b.nightlyRate)}</td>
           <td><span class="status ${b.status}">${b.status}</span></td>
           <td>${formatDateTime(b.createdAt)}</td>
           <td class="actions"></td>
@@ -191,6 +464,7 @@
           <div><label>Værelse</label><input type="number" class="eRoomNumber" min="1" value="${b.roomNumber}"/></div>
           <div><label>Indtjek</label><input type="date" class="eCheckIn" value="${formatDateInput(b.checkIn)}"/></div>
           <div><label>Udtjek</label><input type="date" class="eCheckOut" value="${formatDateInput(b.checkOut)}"/></div>
+          <div><label>Pris/nat (DKK)</label><input type="number" class="eNightlyRate" min="1" step="0.01" value="${b.nightlyRate}"/></div>
           <div><label>Status</label><select class="eStatus">
             <option value="confirmed" ${b.status === 'confirmed' ? 'selected' : ''}>Bekræftet</option>
             <option value="checked_in" ${b.status === 'checked_in' ? 'selected' : ''}>Indtjekket</option>
@@ -214,6 +488,7 @@
             roomNumber: parseInt(editForm.querySelector('.eRoomNumber').value),
             checkIn: editForm.querySelector('.eCheckIn').value,
             checkOut: editForm.querySelector('.eCheckOut').value,
+            nightlyRate: Number(editForm.querySelector('.eNightlyRate').value),
             status: editForm.querySelector('.eStatus').value,
           };
           updateBooking(b.id, booking);
@@ -279,6 +554,7 @@
         roomNumber: parseInt(document.getElementById('fRoomNumber').value),
         checkIn: document.getElementById('fCheckIn').value,
         checkOut: document.getElementById('fCheckOut').value,
+        nightlyRate: Number(document.getElementById('fNightlyRate').value),
         status: document.getElementById('fStatus').value,
       };
       if (editingId) {
@@ -309,7 +585,13 @@
       return div.innerHTML;
     }
 
+    setDefaultPeriod();
     loadBookings();
+    refreshDashboard();
+    setInterval(() => {
+      loadBookings();
+      loadOverview().catch((err) => showMsg(err.message, 'error'));
+    }, 15000);
   </script>
 </body>
 </html>

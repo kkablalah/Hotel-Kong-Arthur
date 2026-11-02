@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Hotel Kong Arthur - Booking API
+  title: Hotel Kong Arthur - Drift og booking API
   description: |
-    REST API til håndtering af hotelbookinger. Bygget efter en 3-lags arkitektur
+    REST API til booking og driftsanalyse. Bygget efter en 3-lags arkitektur
     med præsentationslag (REST), forretningslogiklag (tjenester) og dataagilag (MySQL).
     Hotellets nuværende booking system kan skrive (POST/PUT/DELETE) til dette API.
   version: 1.0.0
@@ -14,6 +14,10 @@ servers:
 tags:
   - name: bookings
     description: Administration af hotelbookinger
+  - name: analytics
+    description: Driftsnøgletal og gæstefeedback
+  - name: bar
+    description: Cocktail- og kaffebarsalg
 paths:
   /bookings:
     get:
@@ -52,6 +56,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          description: Værelset er allerede booket i perioden
   /bookings/{id}:
     get:
       tags: [bookings]
@@ -93,7 +99,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BookingInput'
+              $ref: '#/components/schemas/BookingUpdate'
       responses:
         '200':
           description: Booking opdateret
@@ -105,6 +111,8 @@ paths:
           description: Valideringsfejl
         '404':
           description: Booking ikke fundet
+        '409':
+          description: Værelset er allerede booket i perioden
     delete:
       tags: [bookings]
       summary: Slet en booking
@@ -121,6 +129,100 @@ paths:
           description: Booking slettet
         '404':
           description: Booking ikke fundet
+  /analytics/overview:
+    get:
+      tags: [analytics]
+      summary: Hent nøgletal for perioden
+      operationId: getAnalyticsOverview
+      parameters:
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date
+          description: Første dato inklusive; standard er første dag i indeværende måned
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date
+          description: Sidste dato inklusive; standard er sidste dag i indeværende måned. Intervallet må højst være 366 dage.
+      responses:
+        '200':
+          description: Belægning, indtjening, feedback og barsalg
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsOverview'
+        '400':
+          description: Ugyldigt datointerval
+  /bar-menu:
+    get:
+      tags: [bar]
+      summary: Hent cocktail- og kaffemenu
+      operationId: getBarMenu
+      responses:
+        '200':
+          description: Menu med historiske grundtal
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Drink'
+  /bar-sales:
+    post:
+      tags: [bar]
+      summary: Registrer et nyt barsalg
+      operationId: recordBarSale
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, quantity]
+              properties:
+                productId:
+                  type: integer
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 1000
+                staffMember:
+                  type: string
+                  default: Helene Christine
+      responses:
+        '201':
+          description: Salg registreret
+        '400':
+          description: Ugyldigt salg
+  /feedback:
+    post:
+      tags: [analytics]
+      summary: Registrer gæstefeedback
+      operationId: recordGuestFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                guestName:
+                  type: string
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+      responses:
+        '201':
+          description: Feedback registreret
+        '400':
+          description: Ugyldig feedback
 components:
   schemas:
     Booking:
@@ -138,6 +240,10 @@ components:
         roomNumber:
           type: integer
           example: 101
+        nightlyRate:
+          type: number
+          format: float
+          example: 1850
         checkIn:
           type: string
           format: date
@@ -168,6 +274,9 @@ components:
           type: string
         roomNumber:
           type: integer
+        nightlyRate:
+          type: number
+          format: float
         checkIn:
           type: string
           format: date
@@ -183,6 +292,32 @@ components:
         - roomNumber
         - checkIn
         - checkOut
+    BookingUpdate:
+      type: object
+      description: Alle felter er valgfrie; mindst ét felt skal ændres.
+      minProperties: 1
+      properties:
+        guestName:
+          type: string
+        email:
+          type: string
+          format: email
+        roomNumber:
+          type: integer
+        nightlyRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 99999999.99
+        checkIn:
+          type: string
+          format: date
+        checkOut:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [confirmed, cancelled, checked_in, checked_out]
     Error:
       type: object
       properties:
@@ -190,3 +325,122 @@ components:
           type: string
       example:
         error: "Fejlbeskrivelse"
+    Drink:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          enum: [Cocktail, Coffee]
+        priceDkk:
+          type: number
+    AnalyticsOverview:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date
+            to:
+              type: string
+              format: date
+            days:
+              type: integer
+        occupancy:
+          type: object
+          properties:
+            occupiedRoomNights:
+              type: integer
+            capacityRoomNights:
+              type: integer
+            totalRooms:
+              type: integer
+            ratePercent:
+              type: number
+        bookings:
+          type: integer
+        roomRevenueDkk:
+          type: number
+        feedback:
+          type: object
+          properties:
+            count:
+              type: integer
+            averageRating:
+              type: number
+              nullable: true
+        historical:
+          type: object
+          properties:
+            sourceDescription:
+              type: string
+            totalStays:
+              type: integer
+            totalRevenueDkk:
+              type: number
+            seasons:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  stays:
+                    type: integer
+                  revenueDkk:
+                    type: number
+                  averageStayRevenueDkk:
+                    type: number
+            roomTypes:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  stays:
+                    type: integer
+                  revenueDkk:
+                    type: number
+        bar:
+          type: object
+          properties:
+            baselineDescription:
+              type: string
+            liveSalesDescription:
+              type: string
+            categories:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  totalUnits:
+                    type: integer
+                  totalRevenueDkk:
+                    type: number
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        units:
+                          type: integer
+                        revenueDkk:
+                          type: number
+                        baselineUnits:
+                          type: integer
+                        liveUnits:
+                          type: integer
+                        sharePercent:
+                          type: number

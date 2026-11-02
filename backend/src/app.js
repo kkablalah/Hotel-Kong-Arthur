@@ -6,6 +6,8 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import bookingRoutes from './routes/bookings.js';
+import analyticsRoutes from './routes/analytics.js';
+import { initializeAnalyticsSchema } from './services/analyticsService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +22,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // API ruter (præsentationslag)
 app.use('/api', bookingRoutes);
+app.use('/api', analyticsRoutes);
 
 // Sundhedstjek
 app.get('/health', (req, res) => {
@@ -37,9 +40,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Intern serverfejl', detail: err.message });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend kører på http://0.0.0.0:${PORT}`);
-  console.log(`Swagger UI tilgængelig på http://0.0.0.0:${PORT}/api-docs`);
+const startServer = async () => {
+  await initializeAnalyticsSchema();
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Backend kører på http://0.0.0.0:${PORT}`);
+    console.log(`Swagger UI tilgængelig på http://0.0.0.0:${PORT}/api-docs`);
+  });
+};
+
+startServer().catch((err) => {
+  console.error('Backend kunne ikke starte:', err);
+  process.exitCode = 1;
 });
 
 export default app;
