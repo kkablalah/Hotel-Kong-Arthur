@@ -1,17 +1,16 @@
 services:
   db:
-    image: mysql:8.0
+    image: postgres:18
     environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql
       - ./db:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      # Via 127.0.0.1, fordi MySQL først lytter på TCP, når db/-filerne er indlæst.
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      # Via 127.0.0.1, fordi PostgreSQL først lytter på TCP, når db/-filerne er indlæst.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       # Første opstart kan tage flere minutter, fordi databasen oprettes og db/-filerne indlæses.
       interval: 5s
       timeout: 5s
@@ -85,4 +84,4 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  postgres_data:

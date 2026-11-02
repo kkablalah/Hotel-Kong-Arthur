@@ -7,8 +7,6 @@
 -- Ret tallene i listen herunder. Summen af antal skal vaere 214. Aendringer slaar
 -- igennem efter docker-compose down -v, som ogsaa sletter nye bookinger.
 
-SET NAMES utf8mb4;
-
 INSERT INTO rooms (room_number, room_type_id, capacity)
 WITH RECURSIVE
   fordeling (room_type, antal, kapacitet) AS (
@@ -28,4 +26,5 @@ WITH RECURSIVE
 SELECT ROW_NUMBER() OVER (ORDER BY t.room_type_id, tal.n), t.room_type_id, f.kapacitet
 FROM fordeling f
 JOIN tal ON tal.n <= f.antal
-JOIN room_types t ON t.name = f.room_type COLLATE utf8mb4_unicode_ci;
+JOIN room_types t ON t.name = f.room_type
+ORDER BY t.room_type_id, tal.n;

@@ -1,4 +1,4 @@
-// Fælles hjælp til tests. Testene kører mod en rigtig MySQL: docker-compose exec backend npm test
+// Fælles hjælp til tests. Testene kører mod en rigtig PostgreSQL: docker-compose exec backend npm test
 const { app } = require('../src/presentation/app');
 const { pool } = require('../src/data/db');
 
@@ -27,20 +27,20 @@ async function request(baseUrl, method, path, body) {
 }
 
 async function createTestRoom(roomNumber, capacity) {
-  const [types] = await pool.execute('SELECT room_type_id FROM room_types ORDER BY room_type_id LIMIT 1');
-  const [result] = await pool.execute(
-    'INSERT INTO rooms (room_number, room_type_id, capacity) VALUES (?, ?, ?)',
+  const { rows: types } = await pool.query('SELECT room_type_id FROM room_types ORDER BY room_type_id LIMIT 1');
+  const { rows } = await pool.query(
+    'INSERT INTO rooms (room_number, room_type_id, capacity) VALUES ($1, $2, $3) RETURNING room_id',
     [TEST_ROOM_NUMBER_FROM + roomNumber, types[0].room_type_id, capacity]
   );
-  return result.insertId;
+  return rows[0].room_id;
 }
 
 async function cleanup() {
-  await pool.execute(
-    'DELETE b FROM bookings b JOIN rooms r ON r.room_id = b.room_id WHERE r.room_number >= ?',
+  await pool.query(
+    'DELETE FROM bookings b USING rooms r WHERE r.room_id = b.room_id AND r.room_number >= $1',
     [TEST_ROOM_NUMBER_FROM]
   );
-  await pool.execute('DELETE FROM rooms WHERE room_number >= ?', [TEST_ROOM_NUMBER_FROM]);
+  await pool.query('DELETE FROM rooms WHERE room_number >= $1', [TEST_ROOM_NUMBER_FROM]);
 }
 
 function bookingBody(roomId, overrides = {}) {

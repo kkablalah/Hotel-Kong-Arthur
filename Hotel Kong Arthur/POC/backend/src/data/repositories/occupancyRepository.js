@@ -2,9 +2,9 @@
 const { pool } = require('../db');
 
 async function findBookingsInPeriod(startDate, endDate) {
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     `SELECT check_in_date, check_out_date FROM bookings
-     WHERE check_out_date > ? AND check_in_date <= ?`,
+     WHERE check_out_date > $1 AND check_in_date <= $2`,
     [startDate, endDate]
   );
   return rows;

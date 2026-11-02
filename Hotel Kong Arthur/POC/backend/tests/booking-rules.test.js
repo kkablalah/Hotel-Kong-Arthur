@@ -15,7 +15,7 @@ before(async () => {
 });
 
 beforeEach(async () => {
-  await pool.execute('DELETE FROM bookings WHERE room_id = ?', [roomId]);
+  await pool.query('DELETE FROM bookings WHERE room_id = $1', [roomId]);
 });
 
 after(async () => {

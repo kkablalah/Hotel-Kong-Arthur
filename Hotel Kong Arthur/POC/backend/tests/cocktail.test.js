@@ -18,7 +18,7 @@ after(async () => {
 });
 
 test('Helenes samlede salg stemmer med SQL', async () => {
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     'SELECT ROUND(SUM(revenue_dkk), 2) AS total, SUM(units_sold) AS units FROM drink_sales'
   );
   const { status, body } = await api('GET', '/api/cocktail/sales');
@@ -38,7 +38,7 @@ test('barsalget hører til HISTORIK_AAR, og andre år giver 404', async () => {
 });
 
 test('omsætning pr. drink dækker alle drikke og er sorteret faldende', async () => {
-  const [control] = await pool.execute('SELECT drink, revenue_dkk FROM drink_sales');
+  const { rows: control } = await pool.query('SELECT drink, revenue_dkk FROM drink_sales');
   const { body } = await api('GET', '/api/cocktail/sales/products');
   assert.equal(body.length, control.length);
   for (let i = 1; i < body.length; i += 1) {
@@ -51,10 +51,10 @@ test('omsætning pr. drink dækker alle drikke og er sorteret faldende', async (
 });
 
 test('fordelingen har begge andele, og de stemmer med SQL', async () => {
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     `SELECT category,
             ROUND(SUM(revenue_dkk) / (SELECT SUM(revenue_dkk) FROM drink_sales) * 100, 1) AS revenue_share,
-            ROUND(SUM(units_sold) / (SELECT SUM(units_sold) FROM drink_sales) * 100, 1) AS unit_share
+            ROUND(SUM(units_sold)::numeric / (SELECT SUM(units_sold) FROM drink_sales) * 100, 1) AS unit_share
      FROM drink_sales GROUP BY category`
   );
   const { body } = await api('GET', '/api/cocktail/sales/distribution');

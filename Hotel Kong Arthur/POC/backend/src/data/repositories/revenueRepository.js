@@ -3,7 +3,7 @@ const { pool } = require('../db');
 
 // stays har ingen datoer, kun den sæson, der står i de leverede data.
 async function findStayTotals() {
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     `SELECT t.name AS room_type, c.name AS country, s.season,
             SUM(s.price) AS revenue, COUNT(*) AS stays_count
      FROM stays s
@@ -15,9 +15,9 @@ async function findStayTotals() {
 }
 
 async function findBookings(startDate, endDate) {
-  const dateFilter = startDate ? 'WHERE b.check_in_date BETWEEN ? AND ?' : '';
+  const dateFilter = startDate ? 'WHERE b.check_in_date BETWEEN $1 AND $2' : '';
   const params = startDate ? [startDate, endDate] : [];
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     `SELECT t.name AS room_type, c.name AS country, b.check_in_date, b.total_price
      FROM bookings b
      JOIN rooms r ON r.room_id = b.room_id

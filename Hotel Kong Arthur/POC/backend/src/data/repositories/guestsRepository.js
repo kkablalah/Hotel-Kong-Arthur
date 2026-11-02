@@ -2,7 +2,7 @@
 const { pool } = require('../db');
 
 async function findStaysByCountry() {
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     `SELECT c.name AS country, COUNT(*) AS stays_count, SUM(s.price) AS revenue
      FROM stays s
      JOIN countries c ON c.country_id = s.country_id
@@ -12,9 +12,9 @@ async function findStaysByCountry() {
 }
 
 async function findBookingsByCountry(startDate, endDate) {
-  const dateFilter = startDate ? 'WHERE b.check_in_date BETWEEN ? AND ?' : '';
+  const dateFilter = startDate ? 'WHERE b.check_in_date BETWEEN $1 AND $2' : '';
   const params = startDate ? [startDate, endDate] : [];
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     `SELECT COALESCE(c.name, 'Ukendt') AS country, COUNT(*) AS stays_count, SUM(b.total_price) AS revenue
      FROM bookings b
      LEFT JOIN countries c ON c.country_id = b.country_id

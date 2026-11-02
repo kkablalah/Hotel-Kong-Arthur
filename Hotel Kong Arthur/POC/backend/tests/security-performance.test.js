@@ -22,7 +22,7 @@ after(async () => {
 });
 
 async function tableCounts() {
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     `SELECT (SELECT COUNT(*) FROM stays) AS stays, (SELECT COUNT(*) FROM countries) AS countries`
   );
   return rows[0];
@@ -52,6 +52,24 @@ test('fejlsvar indeholder ingen stack traces eller databasedetaljer', async () =
   const response = await api('POST', '/api/bookings', { first_name: INJECTION });
   assert.equal(response.status, 400);
   assert.doesNotMatch(response.text, /node_modules|\.js:\d+|sql|mysql|ER_/i);
+});
+
+test('værdier, som databasen ikke kan rumme, giver 400 uden databasedetaljer', async () => {
+  const dates = { check_in_date: '2093-02-01', check_out_date: '2093-02-02' };
+  const responses = await Promise.all([
+    api('GET', '/api/bookings/99999999999'),
+    api('GET', '/api/bookings?room_id=99999999999'),
+    api('GET', '/api/metrics/satisfaction?start_date=2090-02-30&end_date=2090-03-01'),
+    api('GET', '/api/metrics/occupancy?start_date=0000-01-01&end_date=0000-01-02'),
+    api('POST', '/api/bookings', bookingBody(roomId, { ...dates, check_in_date: '2093-02-30', check_out_date: '2093-03-02' })),
+    api('POST', '/api/bookings', bookingBody(roomId, { ...dates, first_name: 'A\u0000B' })),
+    api('POST', '/api/bookings', bookingBody(roomId, { ...dates, total_price: 99999999999999 })),
+  ]);
+  for (const response of responses) {
+    assert.equal(response.status, 400, response.text);
+    assert.equal(response.body.error.code, 'VALIDATION_ERROR');
+    assert.doesNotMatch(response.text, /out of range|overflow|encoding|sql/i);
+  }
 });
 
 async function elapsed(call) {

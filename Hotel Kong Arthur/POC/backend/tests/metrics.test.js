@@ -54,10 +54,10 @@ test('belægning tæller kun nætter i perioden, ikke udtjekningsdagen', async (
 test('belægning stemmer med kontrolforespørgsel', async () => {
   const start = '2092-01-01';
   const end = '2092-12-31';
-  const [rows] = await pool.execute(
-    `SELECT COALESCE(SUM(DATEDIFF(LEAST(check_out_date, DATE_ADD(?, INTERVAL 1 DAY)), GREATEST(check_in_date, ?))), 0) AS nights
-     FROM bookings WHERE check_out_date > ? AND check_in_date <= ?`,
-    [end, start, start, end]
+  const { rows } = await pool.query(
+    `SELECT COALESCE(SUM(LEAST(check_out_date, $1::date + 1) - GREATEST(check_in_date, $2::date)), 0) AS nights
+     FROM bookings WHERE check_out_date > $2 AND check_in_date <= $1`,
+    [end, start]
   );
   const { body } = await api('GET', `/api/metrics/occupancy?start_date=${start}&end_date=${end}`);
   assert.equal(body.occupied_room_nights, Number(rows[0].nights));
@@ -74,7 +74,7 @@ test('belægning i en tom periode er 0, og forkert rækkefølge giver 400', asyn
 });
 
 test('indtjening uden periode stemmer med SQL for alle grupperinger', async () => {
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     `SELECT ROUND((SELECT COALESCE(SUM(price), 0) FROM stays) + (SELECT COALESCE(SUM(total_price), 0) FROM bookings), 2) AS total`
   );
   for (const groupBy of ['type', 'season', 'country', 'year', 'type_season']) {
@@ -97,7 +97,7 @@ test('indtjening er sorteret faldende, så den højeste kan findes', async () =>
 });
 
 test('indtjening pr. værelsestype pr. sæson stemmer med SQL', async () => {
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     `SELECT t.name AS room_type, s.season, ROUND(SUM(s.price), 2) AS total
      FROM stays s JOIN room_types t ON t.room_type_id = s.room_type_id
      GROUP BY t.name, s.season`
@@ -135,9 +135,9 @@ test('nye bookinger tæller i det år, de tjekker ind, og et år uden indtjening
 
 test('historiske ophold hører til HISTORIK_AAR, som også er standardåret', async () => {
   const year = Number(process.env.HISTORIK_AAR || 2025);
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     `SELECT ROUND((SELECT SUM(price) FROM stays)
-       + (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE YEAR(check_in_date) = ?), 2) AS total`,
+       + (SELECT COALESCE(SUM(total_price), 0) FROM bookings WHERE EXTRACT(YEAR FROM check_in_date) = $1), 2) AS total`,
     [year]
   );
   const chosen = await api('GET', `/api/metrics/revenue/annual?aar=${year}`);
@@ -151,7 +151,7 @@ test('historiske ophold hører til HISTORIK_AAR, som også er standardåret', as
 });
 
 test('løbende indtjening tæller kun bookinger og ændrer sig med det samme', async () => {
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     'SELECT ROUND(COALESCE(SUM(total_price), 0), 2) AS total, COUNT(*) AS antal FROM bookings'
   );
   const before = (await api('GET', '/api/metrics/revenue/running')).body;
@@ -171,7 +171,7 @@ test('løbende indtjening tæller kun bookinger og ændrer sig med det samme', a
 });
 
 test('de 214 værelser følger seed-filen, og kapacitet er 1-4', async () => {
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     'SELECT COUNT(*) AS antal, MIN(capacity) AS laveste, MAX(capacity) AS hoejeste FROM rooms WHERE room_number < 60000'
   );
   assert.equal(Number(rows[0].antal), 214);
@@ -180,7 +180,7 @@ test('de 214 værelser følger seed-filen, og kapacitet er 1-4', async () => {
 });
 
 test('gæster pr. land stemmer med SQL, og bookinger uden land vises som Ukendt', async () => {
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     `SELECT (SELECT COUNT(*) FROM stays) + (SELECT COUNT(*) FROM bookings) AS total`
   );
   const { rows } = (await api('GET', '/api/metrics/guests/countries')).body;
@@ -201,7 +201,7 @@ test('kundetilfredshed er gennemsnittet for perioden og tom uden ratings', async
 
   const path = '/api/metrics/satisfaction?start_date=2092-01-01&end_date=2092-12-31';
 
-  const [control] = await pool.execute(
+  const { rows: control } = await pool.query(
     `SELECT ROUND(AVG(s.rating), 2) AS average FROM customer_satisfaction s
      JOIN bookings b ON b.booking_id = s.booking_id
      WHERE b.check_in_date BETWEEN '2092-01-01' AND '2092-12-31'`

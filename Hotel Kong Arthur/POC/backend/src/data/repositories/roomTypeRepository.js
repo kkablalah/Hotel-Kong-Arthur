@@ -2,7 +2,7 @@
 const { pool } = require('../db');
 
 async function findAll() {
-  const [rows] = await pool.execute(
+  const { rows } = await pool.query(
     'SELECT room_type_id, name FROM room_types ORDER BY room_type_id'
   );
   return rows;
