@@ -3,7 +3,7 @@ info:
   title: Hotel Kong Arthur - Drift og booking API
   description: |
     REST API til booking og driftsanalyse. Bygget efter en 3-lags arkitektur
-    med præsentationslag (REST), forretningslogiklag (tjenester) og dataagilag (MySQL).
+    med præsentationslag (REST), forretningslogiklag (tjenester) og datalag (SQLite).
     Hotellets nuværende booking system kan skrive (POST/PUT/DELETE) til dette API.
   version: 1.0.0
 servers:
@@ -156,6 +156,74 @@ paths:
                 $ref: '#/components/schemas/AnalyticsOverview'
         '400':
           description: Ugyldigt datointerval
+  /analytics/occupancy:
+    get:
+      tags: [analytics]
+      summary: Beregn belægning og antal bookinger
+      operationId: getOccupancyAnalysis
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Værelsesnætter og belægningsgrad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OccupancyAnalysis'
+        '400':
+          description: Ugyldigt datointerval
+  /analytics/revenue:
+    get:
+      tags: [analytics]
+      summary: Beregn live værelsesindtægt og vis historisk sæsonomsætning
+      operationId: getRevenueAnalysis
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Værelsesindtægt for perioden og historisk omsætning efter sæson/værelsestype
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueAnalysis'
+        '400':
+          description: Ugyldigt datointerval
+  /analytics/satisfaction:
+    get:
+      tags: [analytics]
+      summary: Beregn gæstetilfredshed og vurderingsfordeling
+      operationId: getSatisfactionAnalysis
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Gennemsnit, antal svar og fordeling fra 1 til 5
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatisfactionAnalysis'
+        '400':
+          description: Ugyldigt datointerval
+  /analytics/bar-sales:
+    get:
+      tags: [analytics, bar]
+      summary: Beregn salgsmix og omsætning for cocktails og kaffe
+      operationId: getBarSalesAnalysis
+      parameters:
+        - $ref: '#/components/parameters/FromDate'
+        - $ref: '#/components/parameters/ToDate'
+      responses:
+        '200':
+          description: Produktfordeling, enheder og omsætning for kategorien
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BarSalesAnalysis'
+        '400':
+          description: Ugyldigt datointerval
   /bar-menu:
     get:
       tags: [bar]
@@ -224,6 +292,21 @@ paths:
         '400':
           description: Ugyldig feedback
 components:
+  parameters:
+    FromDate:
+      in: query
+      name: from
+      schema:
+        type: string
+        format: date
+      description: Første dato inklusive; standard er første dag i indeværende måned
+    ToDate:
+      in: query
+      name: to
+      schema:
+        type: string
+        format: date
+      description: Sidste dato inklusive; standard er sidste dag i indeværende måned. Intervallet må højst være 366 dage.
   schemas:
     Booking:
       type: object
@@ -374,6 +457,15 @@ components:
             averageRating:
               type: number
               nullable: true
+            ratings:
+              type: array
+              items:
+                type: object
+                properties:
+                  rating:
+                    type: integer
+                  count:
+                    type: integer
         historical:
           type: object
           properties:
@@ -442,5 +534,158 @@ components:
                           type: integer
                         liveUnits:
                           type: integer
+                        heleneUnits:
+                          type: integer
                         sharePercent:
                           type: number
+                        heleneSharePercent:
+                          type: number
+    OccupancyAnalysis:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/AnalyticsPeriod'
+        occupancy:
+          type: object
+          properties:
+            occupiedRoomNights:
+              type: integer
+            capacityRoomNights:
+              type: integer
+            totalRooms:
+              type: integer
+            ratePercent:
+              type: number
+        bookings:
+          type: integer
+    RevenueAnalysis:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/AnalyticsPeriod'
+        roomRevenueDkk:
+          type: number
+        historical:
+          $ref: '#/components/schemas/HistoricalAnalysis'
+    SatisfactionAnalysis:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/AnalyticsPeriod'
+        feedback:
+          $ref: '#/components/schemas/FeedbackSummary'
+    BarSalesAnalysis:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/AnalyticsPeriod'
+        bar:
+          $ref: '#/components/schemas/BarAnalysis'
+    AnalyticsPeriod:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        days:
+          type: integer
+    HistoricalAnalysis:
+      type: object
+      properties:
+        sourceDescription:
+          type: string
+        totalStays:
+          type: integer
+        totalRevenueDkk:
+          type: number
+        seasons:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                enum: [low, mid, high]
+              stays:
+                type: integer
+              revenueDkk:
+                type: number
+              averageStayRevenueDkk:
+                type: number
+        roomTypes:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              stays:
+                type: integer
+              revenueDkk:
+                type: number
+    FeedbackSummary:
+      type: object
+      properties:
+        count:
+          type: integer
+        averageRating:
+          type: number
+          nullable: true
+        ratings:
+          type: array
+          items:
+            type: object
+            properties:
+              rating:
+                type: integer
+              count:
+                type: integer
+    BarAnalysis:
+      type: object
+      properties:
+        baselineDescription:
+          type: string
+        liveSalesDescription:
+          type: string
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/BarCategory'
+    BarCategory:
+      type: object
+      properties:
+        name:
+          type: string
+          enum: [Cocktail, Coffee]
+        totalUnits:
+          type: integer
+        totalRevenueDkk:
+          type: number
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/BarProduct'
+    BarProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        units:
+          type: integer
+        revenueDkk:
+          type: number
+        baselineUnits:
+          type: integer
+        liveUnits:
+          type: integer
+        heleneUnits:
+          type: integer
+        sharePercent:
+          type: number
+        heleneSharePercent:
+          type: number

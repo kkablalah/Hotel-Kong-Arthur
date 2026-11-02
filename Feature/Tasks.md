@@ -14,7 +14,7 @@
 
 ## US3: Bar
 - [x] Indlæs de 20 cocktail- og 10 kaffeposter som historisk baseline.
-- [x] Registrer live-salg i MySQL og vis procentfordelingen pr. produkt og kategori.
+- [x] Registrer live-salg i SQLite og vis procentfordelingen pr. produkt og kategori.
 - [x] Vis tydeligt at baseline ikke kan henføres til Helene Christine.
 
 ## US4/US5: Feedback og drift
@@ -23,6 +23,10 @@
 - [x] Proxy API og Swagger UI gennem frontend-containerens Nginx.
 - [x] Dokumentér API'et og Docker Compose-start.
 - [x] Byg containere og verificér booking-CRUD, validering, barsalg, feedback og analytics via API.
-- [ ] Afklar/publish et interaktivt Tableau-dashboard.
+- [x] Erstat MySQL med SQLite og bevar databasen i et Docker-volume.
+- [x] Udvid OpenAPI med separate beregningsendpoints for belægning, indtjening, tilfredshed og barsalg.
+- [x] Lad browserdashboardet hente beregningerne direkte fra de separate analyseendpoints.
+- [x] Beregn Helene Christines salgsmix særskilt fra historiske, ikke-attribuerede salgstal.
+- [ ] Afklar/publish et interaktivt Tableau-dashboard, hvis det stadig kræves; frontend/API viser nu beregningerne direkte.
 - [ ] Importér tidsstemplede hotel- og tilfredshedsdata fra kildesystemer.
 - [ ] Tilføj tests og produktionsmæssig adgangskontrol.

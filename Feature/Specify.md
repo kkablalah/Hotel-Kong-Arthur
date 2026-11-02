@@ -27,6 +27,7 @@ Som baransvarlig ønsker jeg at se fordelingen af cocktails og kaffe, så jeg ka
 
 - Dashboardet viser alle 20 cocktails og 10 kaffetyper med solgte enheder og procentandel inden for egen kategori.
 - Nye salg kan registreres med produkt, antal og medarbejder og påvirker dashboardet uden genstart.
+- API og dashboard viser Helene Christines procentfordeling ud fra hendes nye, tidsstemplede salg.
 - Excel-tallene vises som historisk baseline; de tilskrives ikke en bestemt medarbejder.
 
 ### US4 – Gæstetilfredshed
@@ -39,8 +40,10 @@ Som hoteladministrator ønsker jeg at se gennemsnittet af gæsternes vurderinger
 Som beslutningstager ønsker jeg at se opdaterede nøgletal, så dashboardet afspejler nye registreringer.
 
 - Browseren genindlæser driftsdata mindst hvert 15. sekund.
+- Belægning, indtjening, tilfredshed og barsalg kan læses direkte fra separate REST/JSON-analyseendpoints.
+- Dashboardet henter analyserne fra disse analyseendpoints.
 - OpenAPI-kontrakten tilgås via Swagger UI.
-- Frontend, backend og MySQL kan startes med Docker Compose.
+- Frontend og backend med indlejret SQLite kan startes med Docker Compose.
 
 ## Ikke-funktionelle krav
 

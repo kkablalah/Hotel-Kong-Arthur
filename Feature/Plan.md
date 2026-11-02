@@ -9,11 +9,11 @@ Browser
       └─ /api og /api-docs → Express backend (:3000)
            ├─ routes/       REST/JSON-præsentationslag
            ├─ services/     validering og nøgletalsberegning
-           └─ db.js         MySQL dataadgang
-                 └─ MySQL 8 (:3306 internt)
+           └─ db.js         SQLite dataadgang
+                 └─ SQLite databasefil i Docker-volume
 ```
 
-Docker Compose starter frontend, backend og MySQL. Swagger UI hostes af backend og viderestilles gennem Nginx, så browseren bruger én origin.
+Docker Compose starter frontend og backend. SQLite ligger i et vedvarende volume og kræver ikke en separat databasecontainer. Swagger UI hostes af backend og viderestilles gennem Nginx, så browseren bruger én origin.
 
 ## Datamodel
 
@@ -26,9 +26,13 @@ Docker Compose starter frontend, backend og MySQL. Swagger UI hostes af backend 
 ## API
 
 - `/api/bookings`: CRUD for bookinger.
-- `/api/analytics/overview?from=YYYY-MM-DD&to=YYYY-MM-DD`: belægning, bookingindtægt, feedback og barfordeling.
+- `/api/analytics/overview?from=YYYY-MM-DD&to=YYYY-MM-DD`: samlet analyse.
+- `/api/analytics/occupancy`: belægning og bookingantal.
+- `/api/analytics/revenue`: værelsesindtægt og historiske sæson-/værelsestal.
+- `/api/analytics/satisfaction`: gennemsnit og vurderingsfordeling.
+- `/api/analytics/bar-sales`: salgsmix og omsætning for cocktail/kaffe.
 - `/api/bar-menu` og `/api/bar-sales`: menu og registrering af løbende salg.
 - `/api/feedback`: indsendelse af gæstevurdering.
 - `/api-docs`: Swagger UI.
 
-Analytics-tabeller oprettes ved backendstart. En idempotent migrering tilføjer `nightly_rate` til en eksisterende bookingtabel, hvis kolonnen mangler.
+Skema og historiske eksempeldata oprettes idempotent ved backendstart. Den nye SQLite-database importerer ikke automatisk tidligere data fra MySQL.

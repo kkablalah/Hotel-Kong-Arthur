@@ -63,63 +63,85 @@ const historicalStays = [
 ];
 
 export const initializeAnalyticsSchema = async () => {
-  const [columns] = await pool.query(
-    `SELECT COUNT(*) AS found
-     FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings' AND COLUMN_NAME = 'nightly_rate'`
-  );
-  if (Number(columns[0].found) === 0) {
-    await pool.query('ALTER TABLE bookings ADD COLUMN nightly_rate DECIMAL(10, 2) NOT NULL DEFAULT 1500 AFTER check_out');
-  }
-
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bookings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guest_name TEXT NOT NULL CHECK (length(guest_name) <= 100),
+      email TEXT NOT NULL CHECK (length(email) <= 100),
+      room_number INTEGER NOT NULL CHECK (room_number > 0),
+      check_in TEXT NOT NULL,
+      check_out TEXT NOT NULL,
+      nightly_rate REAL NOT NULL DEFAULT 1500 CHECK (nightly_rate > 0),
+      status TEXT NOT NULL DEFAULT 'confirmed'
+        CHECK (status IN ('confirmed', 'cancelled', 'checked_in', 'checked_out')),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS drink_products (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(100) NOT NULL UNIQUE,
-      category ENUM('Cocktail', 'Coffee') NOT NULL,
-      price_dkk DECIMAL(8, 2) NOT NULL,
-      baseline_units INT UNSIGNED NOT NULL DEFAULT 0
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE CHECK (length(name) <= 100),
+      category TEXT NOT NULL CHECK (category IN ('Cocktail', 'Coffee')),
+      price_dkk REAL NOT NULL CHECK (price_dkk > 0),
+      baseline_units INTEGER NOT NULL DEFAULT 0 CHECK (baseline_units >= 0)
+    )
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS drink_sales (
-      id BIGINT AUTO_INCREMENT PRIMARY KEY,
-      product_id INT NOT NULL,
-      quantity INT UNSIGNED NOT NULL,
-      staff_member VARCHAR(100) NOT NULL,
-      sold_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_drink_sales_product FOREIGN KEY (product_id) REFERENCES drink_products(id),
-      INDEX idx_drink_sales_sold_at (sold_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL REFERENCES drink_products(id),
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      staff_member TEXT NOT NULL CHECK (length(staff_member) <= 100),
+      sold_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS guest_feedback (
-      id BIGINT AUTO_INCREMENT PRIMARY KEY,
-      guest_name VARCHAR(100) NULL,
-      rating TINYINT UNSIGNED NOT NULL,
-      comment VARCHAR(1000) NULL,
-      submitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_guest_feedback_submitted_at (submitted_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guest_name TEXT CHECK (guest_name IS NULL OR length(guest_name) <= 100),
+      rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      comment TEXT CHECK (comment IS NULL OR length(comment) <= 1000),
+      submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS historical_stays (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      season ENUM('low', 'mid', 'high') NOT NULL,
-      room_type VARCHAR(100) NOT NULL,
-      stay_count INT UNSIGNED NOT NULL,
-      revenue_dkk DECIMAL(14, 2) NOT NULL,
-      UNIQUE KEY uq_historical_season_room (season, room_type)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      season TEXT NOT NULL CHECK (season IN ('low', 'mid', 'high')),
+      room_type TEXT NOT NULL,
+      stay_count INTEGER NOT NULL CHECK (stay_count >= 0),
+      revenue_dkk REAL NOT NULL CHECK (revenue_dkk >= 0),
+      UNIQUE (season, room_type)
+    )
   `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_bookings_room_dates ON bookings (room_number, check_in, check_out)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_drink_sales_sold_at ON drink_sales (sold_at)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_feedback_submitted_at ON guest_feedback (submitted_at)');
+
+  const [bookingCount] = await pool.query('SELECT COUNT(*) AS count FROM bookings');
+  if (Number(bookingCount[0].count) === 0) {
+    await pool.query(
+      `INSERT INTO bookings (guest_name, email, room_number, check_in, check_out, status)
+       VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?),
+              (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)`,
+      [
+        'Anna Petersen', 'anna@example.com', 101, '2026-11-01', '2026-11-05', 'confirmed',
+        'Lars Nielsen', 'lars@example.com', 202, '2026-11-10', '2026-11-12', 'checked_in',
+        'Sofie Madsen', 'sofie@example.com', 303, '2026-11-15', '2026-11-20', 'confirmed',
+        'Maria Rossi', 'maria@example.com', 104, '2026-11-25', '2026-11-30', 'checked_in',
+        'Sara Garcia', 'sara@example.com', 205, '2026-12-01', '2026-12-05', 'confirmed',
+        'John Smith', 'john@example.com', 306, '2026-12-10', '2026-12-15', 'confirmed',
+      ]
+    );
+  }
 
   await pool.query(
-    `INSERT IGNORE INTO drink_products (name, category, price_dkk, baseline_units)
+    `INSERT OR IGNORE INTO drink_products (name, category, price_dkk, baseline_units)
      VALUES ${products.map(() => '(?, ?, ?, ?)').join(', ')}`,
     products.flat()
   );
   await pool.query(
-    `INSERT IGNORE INTO historical_stays (season, room_type, stay_count, revenue_dkk)
+    `INSERT OR IGNORE INTO historical_stays (season, room_type, stay_count, revenue_dkk)
      VALUES ${historicalStays.map(() => '(?, ?, ?, ?)').join(', ')}`,
     historicalStays.flat()
   );
@@ -162,6 +184,7 @@ export const getOverview = async (fromQuery, toQuery) => {
     throw error;
   }
   const afterTo = new Date(toDate.getTime() + 86400000).toISOString().slice(0, 10);
+  const period = { from, to, days: periodDays };
 
   const [bookings] = await pool.query(
     `SELECT room_number AS roomNumber, check_in AS checkIn, check_out AS checkOut, nightly_rate AS nightlyRate
@@ -188,20 +211,31 @@ export const getOverview = async (fromQuery, toQuery) => {
   }
 
   const [feedback] = await pool.query(
-    'SELECT COUNT(*) AS count, AVG(rating) AS averageRating FROM guest_feedback'
+    `SELECT COUNT(*) AS count, AVG(rating) AS averageRating FROM guest_feedback
+     WHERE submitted_at >= ? AND submitted_at < ?`,
+    [from, afterTo]
+  );
+  const [feedbackRatings] = await pool.query(
+    `SELECT rating, COUNT(*) AS count FROM guest_feedback
+     WHERE submitted_at >= ? AND submitted_at < ?
+     GROUP BY rating ORDER BY rating DESC`,
+    [from, afterTo]
   );
   const [menu] = await pool.query(
     `SELECT p.id, p.name, p.category, p.price_dkk AS priceDkk, p.baseline_units AS baselineUnits,
-            COALESCE(SUM(s.quantity), 0) AS liveUnits
+            COALESCE(SUM(CASE WHEN s.sold_at >= ? AND s.sold_at < ? THEN s.quantity ELSE 0 END), 0) AS liveUnits,
+            COALESCE(SUM(CASE WHEN s.sold_at >= ? AND s.sold_at < ?
+                              AND s.staff_member = 'Helene Christine' THEN s.quantity ELSE 0 END), 0) AS heleneUnits
      FROM drink_products p
      LEFT JOIN drink_sales s ON s.product_id = p.id
      GROUP BY p.id
-     ORDER BY p.category, p.name`
+     ORDER BY p.category, p.name`,
+    [from, afterTo, from, afterTo]
   );
   const [seasonRows] = await pool.query(
     `SELECT season, SUM(stay_count) AS stayCount, SUM(revenue_dkk) AS revenueDkk
      FROM historical_stays GROUP BY season
-     ORDER BY FIELD(season, 'low', 'mid', 'high')`
+     ORDER BY CASE season WHEN 'low' THEN 1 WHEN 'mid' THEN 2 ELSE 3 END`
   );
   const [roomTypeRows] = await pool.query(
     `SELECT room_type AS roomType, SUM(stay_count) AS stayCount, SUM(revenue_dkk) AS revenueDkk
@@ -221,9 +255,11 @@ export const getOverview = async (fromQuery, toQuery) => {
           revenueDkk: Number(revenueDkk.toFixed(2)),
           baselineUnits: Number(product.baselineUnits),
           liveUnits: Number(product.liveUnits),
+          heleneUnits: Number(product.heleneUnits),
         };
       });
     const totalUnits = categoryProducts.reduce((total, product) => total + product.units, 0);
+    const totalHeleneUnits = categoryProducts.reduce((total, product) => total + product.heleneUnits, 0);
     const totalRevenueDkk = categoryProducts.reduce((total, product) => total + product.revenueDkk, 0);
     return {
       name: category,
@@ -232,6 +268,9 @@ export const getOverview = async (fromQuery, toQuery) => {
       products: categoryProducts.map((product) => ({
         ...product,
         sharePercent: totalUnits === 0 ? 0 : Number(((product.units / totalUnits) * 100).toFixed(2)),
+        heleneSharePercent: totalHeleneUnits === 0
+          ? 0
+          : Number(((product.heleneUnits / totalHeleneUnits) * 100).toFixed(2)),
       })),
     };
   });
@@ -245,7 +284,7 @@ export const getOverview = async (fromQuery, toQuery) => {
   const historicalTotalRevenueDkk = historicalSeasons.reduce((total, season) => total + season.revenueDkk, 0);
 
   return {
-    period: { from, to, days: periodDays },
+    period,
     occupancy: {
       occupiedRoomNights: occupiedRoomNights.size,
       capacityRoomNights: ROOM_CAPACITY * periodDays,
@@ -257,6 +296,7 @@ export const getOverview = async (fromQuery, toQuery) => {
     feedback: {
       count: Number(feedback[0].count),
       averageRating: feedback[0].averageRating === null ? null : Number(Number(feedback[0].averageRating).toFixed(2)),
+      ratings: feedbackRatings.map((row) => ({ rating: Number(row.rating), count: Number(row.count) })),
     },
     historical: {
       sourceDescription: 'Aggregeret fra 1.000 historiske ophold; sæsondata mangler kalenderdatoer og bruges ikke i live-belægningen.',
@@ -275,6 +315,30 @@ export const getOverview = async (fromQuery, toQuery) => {
       categories,
     },
   };
+};
+
+export const getOccupancyAnalysis = async (from, to) => {
+  const overview = await getOverview(from, to);
+  return { period: overview.period, occupancy: overview.occupancy, bookings: overview.bookings };
+};
+
+export const getRevenueAnalysis = async (from, to) => {
+  const overview = await getOverview(from, to);
+  return {
+    period: overview.period,
+    roomRevenueDkk: overview.roomRevenueDkk,
+    historical: overview.historical,
+  };
+};
+
+export const getSatisfactionAnalysis = async (from, to) => {
+  const overview = await getOverview(from, to);
+  return { period: overview.period, feedback: overview.feedback };
+};
+
+export const getBarSalesAnalysis = async (from, to) => {
+  const overview = await getOverview(from, to);
+  return { period: overview.period, bar: overview.bar };
 };
 
 export const getBarMenu = async () => {

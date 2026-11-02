@@ -1,7 +1,11 @@
 import express from 'express';
 import {
+  getBarSalesAnalysis,
   getBarMenu,
   getOverview,
+  getOccupancyAnalysis,
+  getRevenueAnalysis,
+  getSatisfactionAnalysis,
   recordBarSale,
   recordFeedback,
 } from '../services/analyticsService.js';
@@ -13,6 +17,16 @@ const handleError = (err, res, next) => {
   return next(err);
 };
 
+const addAnalyticsRoute = (path, handler) => {
+  router.get(path, async (req, res, next) => {
+    try {
+      res.json(await handler(req.query.from, req.query.to));
+    } catch (err) {
+      handleError(err, res, next);
+    }
+  });
+};
+
 router.get('/analytics/overview', async (req, res, next) => {
   try {
     res.json(await getOverview(req.query.from, req.query.to));
@@ -20,6 +34,11 @@ router.get('/analytics/overview', async (req, res, next) => {
     handleError(err, res, next);
   }
 });
+
+addAnalyticsRoute('/analytics/occupancy', getOccupancyAnalysis);
+addAnalyticsRoute('/analytics/revenue', getRevenueAnalysis);
+addAnalyticsRoute('/analytics/satisfaction', getSatisfactionAnalysis);
+addAnalyticsRoute('/analytics/bar-sales', getBarSalesAnalysis);
 
 router.get('/bar-menu', async (req, res, next) => {
   try {

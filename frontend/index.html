@@ -103,7 +103,7 @@
       <div class="dashboard-grid">
         <article class="panel">
           <div class="section-heading">
-            <div><h2>Barens salgsmix</h2><p class="muted">Andel af solgte enheder inden for hver kategori.</p></div>
+            <div><h2>Barens salgsmix</h2><p class="muted">Samlet andel / Helene-andel af nye, registrerede salg.</p></div>
           </div>
           <p id="salesAttribution" class="muted"></p>
           <div id="salesBreakdown"></div>
@@ -124,6 +124,7 @@
             <div><label for="feedbackRating">Vurdering</label><select id="feedbackRating" required><option value="5">5 – Meget tilfreds</option><option value="4">4 – Tilfreds</option><option value="3">3 – Neutral</option><option value="2">2 – Utilfreds</option><option value="1">1 – Meget utilfreds</option></select></div>
             <button type="submit">Gem feedback</button>
           </form>
+          <div id="satisfactionBreakdown" class="historical"></div>
         </article>
       </div>
       <div class="dashboard-grid" style="margin-top:0.75rem">
@@ -180,7 +181,6 @@
 
   <script>
     const API = '/api/bookings';
-    const ANALYTICS_API = '/api/analytics/overview';
     const form = document.getElementById('bookingForm');
     const tableBody = document.getElementById('bookingsBody');
     const emptyState = document.getElementById('emptyState');
@@ -210,12 +210,29 @@
       const from = document.getElementById('periodFrom').value;
       const to = document.getElementById('periodTo').value;
       const params = new URLSearchParams({ from, to });
-      const response = await fetch(`${ANALYTICS_API}?${params}`);
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Kunne ikke hente nøgletal');
-      }
-      renderOverview(await response.json());
+      const getAnalytics = async (endpoint) => {
+        const response = await fetch(`/api/analytics/${endpoint}?${params}`);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || `Kunne ikke hente ${endpoint}`);
+        }
+        return response.json();
+      };
+      const [occupancy, revenue, satisfaction, bar] = await Promise.all([
+        getAnalytics('occupancy'),
+        getAnalytics('revenue'),
+        getAnalytics('satisfaction'),
+        getAnalytics('bar-sales'),
+      ]);
+      renderOverview({
+        period: occupancy.period,
+        occupancy: occupancy.occupancy,
+        bookings: occupancy.bookings,
+        roomRevenueDkk: revenue.roomRevenueDkk,
+        historical: revenue.historical,
+        feedback: satisfaction.feedback,
+        bar: bar.bar,
+      });
     }
 
     function renderOverview(data) {
@@ -227,6 +244,13 @@
       document.getElementById('feedbackValue').textContent =
         data.feedback.averageRating === null ? 'Ingen data' : `${data.feedback.averageRating} / 5`;
       document.getElementById('feedbackCount').textContent = `${data.feedback.count} gæstevurderinger`;
+      renderHistoricalBars(
+        'satisfactionBreakdown',
+        data.feedback.ratings,
+        (rating) => rating.count,
+        (rating) => `${rating.count} svar`,
+        (rating) => `${rating.rating} stjerner`
+      );
 
       const allProducts = data.bar.categories.flatMap((category) => category.products);
       const totalUnits = allProducts.reduce((total, product) => total + product.units, 0);
@@ -275,7 +299,8 @@
           fill.style.width = `${(product.units / maximum) * 100}%`;
           track.appendChild(fill);
           const share = document.createElement('strong');
-          share.textContent = `${product.sharePercent}%`;
+          share.textContent = `${product.sharePercent}% · ${product.heleneSharePercent}%`;
+          share.title = 'Samlet historisk og live-andel / Helene-andel af live-salg';
           row.append(name, track, share);
           section.appendChild(row);
         }
