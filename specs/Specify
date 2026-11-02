@@ -24,7 +24,7 @@ The hotel therefore needs a prototype that can manage booking data, process hote
 - **Hotel administrator:** Monitors occupancy, revenue, guest origins, and hotel performance.
 - **Management:** Uses business metrics to identify trends and support decisions.
 - **Bar manager or administrator:** Monitors cocktail bar sales and product performance.
-- **Dashboard user:** Explores hotel and bar metrics through Tableau.
+- **Dashboard user:** Explores hotel and bar metrics through the browser frontend and Tableau.
 
 ## 2. Goals
 
@@ -38,7 +38,7 @@ The system must enable users to:
 6. Calculate the hotel's revenue for a specified year.
 7. Monitor cocktail bar sales, including sales attributed to Helene Christine.
 8. Compare cocktail and coffee sales.
-9. Explore relevant business metrics in an interactive Tableau dashboard.
+9. Explore relevant business metrics in the frontend and the interactive Tableau dashboard.
 10. Run the complete prototype using Docker Compose.
 
 ## 3. Scope
@@ -53,10 +53,11 @@ The system must enable users to:
 - Annual hotel revenue reporting.
 - Cocktail bar sales analysis.
 - An additional business metric selected by the development team.
-- An interactive Tableau dashboard.
+- A browser frontend that retrieves and displays calculations from the REST API.
+- An interactive Tableau dashboard using the agreed backend data contract.
 - A REST API using JSON.
 - An OpenAPI specification accessible through Swagger UI.
-- A MySQL database.
+- A PostgreSQL database for uge 2. This replaces the original MySQL requirement under the assignment add-on.
 - A browser-based frontend for booking management.
 - Docker-based execution of the complete system.
 
@@ -170,13 +171,21 @@ The selected metric must be documented before implementation.
 
 ### FR-11: Interactive Tableau Dashboard
 
-The system must provide an interactive Tableau dashboard based on data made available through the backend REST API.
+The system must provide a browser frontend that retrieves and displays the hotel and bar calculations from the backend REST API. The existing assignment requirement for an interactive Tableau dashboard remains; its data must use the agreed backend/API definitions rather than introduce conflicting calculations.
 
 The dashboard must present the hotel and cocktail bar metrics specified in this document.
 
 Users must be able to explore the results and compare relevant dimensions, including room types, seasons, countries, products, and reporting periods where applicable.
 
 The dashboard must clearly identify the metrics and reporting periods being displayed.
+
+### FR-14: Analysis API
+
+The REST API must expose the hotel and cocktail bar calculations required by FR-03–FR-10. Routes return JSON and delegate business rules to services; services use repositories for database access. Endpoint inputs, periods, output fields, empty-data behavior, and errors must be described in OpenAPI and available through Swagger UI. The exact calculation rules and data dependencies are tracked in `specs/Clarify` and must be agreed before implementation.
+
+### FR-15: Frontend Analysis Views
+
+The browser frontend must retrieve analysis results from the REST API and display the agreed hotel and bar calculations, including their reporting period and units. The frontend must not independently calculate business metrics.
 
 ### FR-12: API Contract
 
@@ -364,8 +373,8 @@ Priority: Must have.
 
 Acceptance criteria:
 
-- **AC-13.1:** Given that hotel data is available, when the dashboard is opened, then it displays guest origins, hotel revenue, revenue by room type and season, revenue by country, annual hotel revenue, and the selected additional metric.
-- **AC-13.2:** Given that cocktail bar sales data is available, when the dashboard is opened, then it displays annual sales attributed to Helene Christine, revenue by drink, and the agreed cocktail-versus-coffee distribution.
+- **AC-13.1:** Given that hotel data is available, when the frontend and dashboard are opened, then the required views display guest origins, hotel revenue, revenue by room type and season, revenue by country, annual hotel revenue, and the selected additional metric, using API results and identified periods.
+- **AC-13.2:** Given that cocktail bar sales data is available, when the frontend and dashboard are opened, then the required views display annual sales attributed to Helene Christine, revenue by drink, and the agreed cocktail-versus-coffee distribution from API results.
 - **AC-13.3:** Given that the user selects a supported reporting period or category, when the dashboard is filtered, then the relevant visualizations reflect the selection.
 - **AC-13.4:** Given that the dashboard displays a metric, when the user examines it, then the metric's meaning and reporting period are identifiable.
 - **AC-13.5:** Given that the dashboard and API use the same dataset and reporting rules, when a displayed metric is checked against an independently calculated result, then the values agree within the agreed rounding tolerance.
@@ -395,7 +404,7 @@ Acceptance criteria:
 - **AC-15.1:** Given that the repository has been cloned and the documented prerequisites are satisfied, when the documented Docker Compose startup command is executed, then the required application components are started.
 - **AC-15.2:** Given that the system has started successfully, when the developer accesses the application, then the booking interface is available.
 - **AC-15.3:** Given that the system has started successfully, when the developer accesses Swagger UI, then the API documentation is available.
-- **AC-15.4:** Given that the backend requires MySQL, when the application is ready for use, then the backend can communicate with the database.
+- **AC-15.4:** Given that the backend requires PostgreSQL, when the application is ready for use, then the backend can communicate with the uge 2 database.
 - **AC-15.5:** Given that the project is started from a fresh clone, then the documented setup procedure is sufficient to reproduce the working environment.
 
 ## 6. Data Requirements
@@ -513,7 +522,7 @@ The chosen method must be applied consistently.
 
 ### NFR-01: Architecture
 
-The backend must follow a three-layer architecture.
+The backend must follow three layers: REST routes, business services, and repositories for database access. Routes must not contain SQL; services must not access the database driver directly.
 
 ### NFR-02: API
 
@@ -523,7 +532,7 @@ The API contract must be provided through OpenAPI and accessible through Swagger
 
 ### NFR-03: Database
 
-The system must use MySQL.
+The uge 2 system must use PostgreSQL. This is the explicit replacement for the original MySQL requirement. The existing MySQL POC and its named volume are retained separately and must not be reused, migrated, or modified as part of isolated uge 2 startup. Implemented Compose project name: `hka-uge2`; volume key: `postgres_data` (effective default name `hka-uge2_postgres_data`) in `compose.uge2.yaml`.
 
 ### NFR-04: Deployment
 

@@ -1,6 +1,6 @@
-import pool from '../db.js';
+import * as bookingRepository from '../repositories/bookingRepository.js';
 
-// --- Forretningslogiklag: booking tjenester ---
+// --- Forretningslogiklag: validering og bookingregler ---
 
 const VALID_STATUSES = new Set(['confirmed', 'cancelled', 'checked_in', 'checked_out']);
 const MAX_INT = 2147483647;
@@ -67,60 +67,18 @@ const validateBooking = (booking, { isUpdate = false } = {}) => {
   return { guestName, email, roomNumber, checkIn, checkOut, status };
 };
 
-export const getAllBookings = async () => {
-  const [rows] = await pool.query(
-    'SELECT id, guest_name AS guestName, email, room_number AS roomNumber, check_in AS checkIn, check_out AS checkOut, status, created_at AS createdAt FROM bookings ORDER BY created_at DESC'
-  );
-  return rows;
-};
+export const getAllBookings = () => bookingRepository.getAll();
 
-export const getBookingById = async (id) => {
-  const [rows] = await pool.query(
-    'SELECT id, guest_name AS guestName, email, room_number AS roomNumber, check_in AS checkIn, check_out AS checkOut, status, created_at AS createdAt FROM bookings WHERE id = ?',
-    [id]
-  );
-  return rows[0] || null;
-};
+export const getBookingById = (id) => bookingRepository.getById(id);
 
 export const createBooking = async (booking) => {
-  const { guestName, email, roomNumber, checkIn, checkOut, status } = validateBooking(booking);
-
-  const [result] = await pool.query(
-    `INSERT INTO bookings (guest_name, email, room_number, check_in, check_out, status)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [guestName, email, roomNumber, checkIn, checkOut, status]
-  );
-
-  return getBookingById(result.insertId);
+  const validated = validateBooking(booking);
+  return bookingRepository.insert(validated);
 };
 
 export const updateBooking = async (id, booking) => {
-  const { guestName, email, roomNumber, checkIn, checkOut, status } = validateBooking(booking, { isUpdate: true });
-  const existing = await getBookingById(id);
-  if (!existing) {
-    return null;
-  }
-
-  await pool.query(
-    `UPDATE bookings
-     SET guest_name = ?,
-         email = ?,
-         room_number = ?,
-         check_in = ?,
-         check_out = ?,
-         status = ?
-     WHERE id = ?`,
-    [guestName, email, roomNumber, checkIn, checkOut, status, id]
-  );
-
-  return getBookingById(id);
+  const validated = validateBooking(booking, { isUpdate: true });
+  return bookingRepository.update(id, validated);
 };
 
-export const deleteBooking = async (id) => {
-  const existing = await getBookingById(id);
-  if (!existing) {
-    return false;
-  }
-  await pool.query('DELETE FROM bookings WHERE id = ?', [id]);
-  return true;
-};
+export const deleteBooking = (id) => bookingRepository.remove(id);

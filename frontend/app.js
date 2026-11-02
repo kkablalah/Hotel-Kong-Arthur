@@ -1,4 +1,5 @@
 const API = '/api/bookings';
+const ANALYSIS_API = '/api/analysis';
 const form = document.getElementById('bookingForm');
 const tableBody = document.getElementById('bookingsBody');
 const emptyState = document.getElementById('emptyState');
@@ -219,4 +220,180 @@ function escapeHtml(text) {
   return element.innerHTML;
 }
 
+const bookingsTab = document.getElementById('bookingsTab');
+const analysisTab = document.getElementById('analysisTab');
+const bookingsView = document.getElementById('bookingsView');
+const analysisView = document.getElementById('analysisView');
+const refreshAnalysis = document.getElementById('refreshAnalysis');
+const analysisStatus = document.getElementById('analysisStatus');
+const analysisError = document.getElementById('analysisError');
+let analysisLoaded = false;
+let analysisLoading = false;
+let filterOptionsLoaded = false;
+
+function activateView(view, shouldLoad = true) {
+  const showAnalysis = view === 'analysis';
+  bookingsView.classList.toggle('hidden', showAnalysis);
+  analysisView.classList.toggle('hidden', !showAnalysis);
+  bookingsTab.classList.toggle('is-active', !showAnalysis);
+  analysisTab.classList.toggle('is-active', showAnalysis);
+  bookingsTab.setAttribute('aria-selected', String(!showAnalysis));
+  analysisTab.setAttribute('aria-selected', String(showAnalysis));
+  if (showAnalysis && shouldLoad && !analysisLoaded && !analysisLoading) loadAnalysis();
+}
+
+bookingsTab.addEventListener('click', () => {
+  if (window.location.hash !== '#bookings') window.location.hash = 'bookings';
+  activateView('bookings');
+});
+analysisTab.addEventListener('click', () => {
+  if (window.location.hash !== '#analysis') window.location.hash = 'analysis';
+  activateView('analysis');
+});
+window.addEventListener('hashchange', () => {
+  activateView(window.location.hash === '#analysis' ? 'analysis' : 'bookings');
+});
+refreshAnalysis.addEventListener('click', loadAnalysis);
+
+const currencyFormatter = new Intl.NumberFormat('da-DK', {
+  style: 'currency', currency: 'DKK', minimumFractionDigits: 2, maximumFractionDigits: 2,
+});
+const numberFormatter = new Intl.NumberFormat('da-DK');
+const decimalFormatter = new Intl.NumberFormat('da-DK', {
+  minimumFractionDigits: 0, maximumFractionDigits: 3,
+});
+const percentFormatter = new Intl.NumberFormat('da-DK', {
+  minimumFractionDigits: 2, maximumFractionDigits: 2,
+});
+
+function formatCurrency(value) {
+  return value === null || value === undefined ? '—' : currencyFormatter.format(Number(value));
+}
+
+function emptyTableRow(colspan, message = 'Ingen data matcher de valgte filtre.') {
+  return `<tr><td class="analysis-empty" colspan="${colspan}">${escapeHtml(message)}</td></tr>`;
+}
+
+function populateFilter(selectId, values, allLabel) {
+  const select = document.getElementById(selectId);
+  const previous = select.value;
+  select.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>`
+    + values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('');
+  if (values.includes(previous)) select.value = previous;
+}
+
+async function analysisFetch(path, query = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value) params.set(key, value);
+  }
+  const suffix = params.size ? `?${params.toString()}` : '';
+  const response = await fetch(`${ANALYSIS_API}${path}${suffix}`);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `API-fejl (${response.status}).`);
+  return body;
+}
+
+function currentHotelFilters() {
+  return {
+    country: document.getElementById('filterCountry').value,
+    roomType: document.getElementById('filterRoomType').value,
+    season: document.getElementById('filterSeason').value,
+  };
+}
+
+function renderAnalysis(result) {
+  const { summary, stayCounts, countryRevenue, roomSeason, topCountry, topRoom, average, barSummary, products, shares } = result;
+  document.getElementById('hotelAmount').textContent = formatCurrency(summary.data.totalAmount);
+  document.getElementById('barAmount').textContent = formatCurrency(barSummary.data.totalRevenue);
+  document.getElementById('stayCount').textContent = numberFormatter.format(summary.data.registeredStays);
+  document.getElementById('averageDays').textContent = average.data.averageDaysRented === null
+    ? '—' : decimalFormatter.format(average.data.averageDaysRented);
+
+  const revenueByCountry = new Map(countryRevenue.data.map((row) => [row.country, row]));
+  document.getElementById('countryRows').innerHTML = stayCounts.data.length
+    ? stayCounts.data.map((row) => {
+      const revenue = revenueByCountry.get(row.country);
+      return `<tr><td>${escapeHtml(row.country)}</td><td>${numberFormatter.format(row.registeredStays)}</td><td>${formatCurrency(revenue?.amount)}</td></tr>`;
+    }).join('') : emptyTableRow(3);
+
+  document.getElementById('roomSeasonRows').innerHTML = roomSeason.data.length
+    ? roomSeason.data.map((row) => `<tr><td>${escapeHtml(row.roomType)}</td><td>${escapeHtml(row.season)}</td><td>${numberFormatter.format(row.registeredStays)}</td><td>${formatCurrency(row.amount)}</td></tr>`).join('')
+    : emptyTableRow(4);
+
+  renderLeaders('topCountry', topCountry.data);
+  renderLeaders('topRoomType', topRoom.data);
+
+  document.getElementById('productRows').innerHTML = products.data.length
+    ? products.data.map((row) => `<tr><td>${escapeHtml(row.drinkName)}</td><td>${escapeHtml(row.category)}</td><td>${formatCurrency(row.unitPrice)}</td><td>${numberFormatter.format(row.unitsSold)}</td><td>${formatCurrency(row.revenue)}</td></tr>`).join('')
+    : emptyTableRow(5);
+
+  const categories = shares.data.categories;
+  document.getElementById('categoryRows').innerHTML = categories.length
+    ? categories.map((row) => `<tr><td>${escapeHtml(row.category)}<span class="share-track" aria-hidden="true"><span style="width:${Number(row.sharePercent)}%"></span></span></td><td>${numberFormatter.format(row.unitsSold)}</td><td>${percentFormatter.format(row.sharePercent)} %</td></tr>`).join('')
+    : emptyTableRow(3);
+  document.getElementById('categoryTotal').textContent = categories.length
+    ? `I alt ${numberFormatter.format(shares.data.totalUnitsSold)} solgte enheder.`
+    : 'Der er ingen kategoridata at vise.';
+
+  document.getElementById('hotelBasis').textContent = `${summary.dataBasis.source} ${summary.dataBasis.measure} ${summary.dataBasis.assumptions.join(' ')}`;
+  document.getElementById('barBasis').textContent = `${barSummary.dataBasis.source} ${barSummary.dataBasis.measure} ${barSummary.dataBasis.assumptions.join(' ')}`;
+}
+
+function renderLeaders(elementId, data) {
+  const target = document.getElementById(elementId);
+  if (!data.leaders.length) {
+    target.innerHTML = '<p class="analysis-empty-copy">Ingen data matcher de valgte filtre.</p>';
+    return;
+  }
+  target.innerHTML = `<p class="leader-amount">${formatCurrency(data.maximumAmount)}</p>`
+    + data.leaders.map((leader) => `<div class="leader-row"><span>${escapeHtml(leader.value)}</span><span>${formatCurrency(leader.amount)}</span></div>`).join('');
+}
+
+async function loadAnalysis() {
+  if (analysisLoading) return;
+  analysisLoading = true;
+  const filters = currentHotelFilters();
+  const category = document.getElementById('filterCategory').value;
+  refreshAnalysis.disabled = true;
+  refreshAnalysis.setAttribute('aria-busy', 'true');
+  analysisStatus.textContent = 'Henter analyser fra API’et …';
+  analysisError.classList.add('hidden');
+
+  try {
+    const [summary, stayCounts, countryRevenue, roomSeason, topCountry, topRoom, average, barSummary, products, shares] = await Promise.all([
+      analysisFetch('/hotel/summary', filters),
+      analysisFetch('/hotel/stay-counts-by-country', filters),
+      analysisFetch('/hotel/revenue-by-country', filters),
+      analysisFetch('/hotel/revenue-by-room-type-season', filters),
+      analysisFetch('/hotel/top-revenue', { ...filters, groupBy: 'country' }),
+      analysisFetch('/hotel/top-revenue', { ...filters, groupBy: 'roomType' }),
+      analysisFetch('/hotel/average-stay-length', filters),
+      analysisFetch('/bar/summary', { category }),
+      analysisFetch('/bar/products', { category }),
+      analysisFetch('/bar/category-shares'),
+    ]);
+
+    if (!filterOptionsLoaded) {
+      populateFilter('filterCountry', stayCounts.data.map((row) => row.country), 'Alle lande');
+      populateFilter('filterRoomType', [...new Set(roomSeason.data.map((row) => row.roomType))].sort(), 'Alle værelsestyper');
+      populateFilter('filterSeason', [...new Set(roomSeason.data.map((row) => row.season))].sort(), 'Alle sæsoner');
+      populateFilter('filterCategory', shares.data.categories.map((row) => row.category), 'Alle kategorier');
+      filterOptionsLoaded = true;
+    }
+    renderAnalysis({ summary, stayCounts, countryRevenue, roomSeason, topCountry, topRoom, average, barSummary, products, shares });
+    analysisLoaded = true;
+    analysisStatus.textContent = `Data opdateret ${new Intl.DateTimeFormat('da-DK', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}.`;
+  } catch (error) {
+    analysisError.textContent = `Analyserne kunne ikke hentes. ${error.message}`;
+    analysisError.classList.remove('hidden');
+    analysisStatus.textContent = 'Kontrollér forbindelsen, og prøv igen.';
+  } finally {
+    analysisLoading = false;
+    refreshAnalysis.disabled = false;
+    refreshAnalysis.removeAttribute('aria-busy');
+  }
+}
+
 loadBookings();
+activateView(window.location.hash === '#analysis' ? 'analysis' : 'bookings');

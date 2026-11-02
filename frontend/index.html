@@ -34,7 +34,12 @@
         <span class="intro-ornament" aria-hidden="true">✳</span>
       </section>
 
-      <section class="booking-section" aria-labelledby="bookings-heading">
+      <nav class="view-tabs" role="tablist" aria-label="Vælg visning">
+        <button id="bookingsTab" class="view-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="bookingsView">Bookinger</button>
+        <button id="analysisTab" class="view-tab" type="button" role="tab" aria-selected="false" aria-controls="analysisView">Analyser</button>
+      </nav>
+
+      <section id="bookingsView" class="booking-section" role="tabpanel" aria-labelledby="bookingsTab">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Gæster og ophold</p>
@@ -120,6 +125,98 @@
             <p>Der er ingen bookinger at vise endnu.</p>
             <span>Opret en booking for at komme i gang.</span>
           </div>
+        </div>
+      </section>
+
+      <section id="analysisView" class="analysis-view hidden" role="tabpanel" aria-labelledby="analysisTab">
+        <div class="section-heading analysis-heading">
+          <div>
+            <p class="eyebrow">Importerede kildedata</p>
+            <h2>Hotel og bar</h2>
+          </div>
+          <button id="refreshAnalysis" class="button button-primary" type="button">
+            <span aria-hidden="true">↻</span> Opdatér
+          </button>
+        </div>
+
+        <div class="analysis-filters card" aria-label="Analysefiltre">
+          <div class="form-field">
+            <label for="filterCountry">Land</label>
+            <select id="filterCountry"><option value="">Alle lande</option></select>
+          </div>
+          <div class="form-field">
+            <label for="filterRoomType">Værelsestype</label>
+            <select id="filterRoomType"><option value="">Alle værelsestyper</option></select>
+          </div>
+          <div class="form-field">
+            <label for="filterSeason">Sæson</label>
+            <select id="filterSeason"><option value="">Alle sæsoner</option></select>
+          </div>
+          <div class="form-field">
+            <label for="filterCategory">Drikkategori · barbeløb og liste</label>
+            <select id="filterCategory"><option value="">Alle kategorier</option></select>
+            <small class="filter-hint">Kategoriandelene viser altid hele datasættet.</small>
+          </div>
+        </div>
+
+        <div id="analysisStatus" class="analysis-status" role="status" aria-live="polite"></div>
+        <div id="analysisError" class="message error hidden" role="alert"></div>
+
+        <div class="analysis-cards">
+          <article class="metric-card card">
+            <p class="metric-label">Hotelbeløb</p>
+            <p id="hotelAmount" class="metric-value">—</p>
+            <span>SUM(Price)</span>
+          </article>
+          <article class="metric-card card">
+            <p class="metric-label">Baromsætning</p>
+            <p id="barAmount" class="metric-value">—</p>
+            <span>Price × Units Sold</span>
+          </article>
+          <article class="metric-card card">
+            <p class="metric-label">Registrerede ophold</p>
+            <p id="stayCount" class="metric-value">—</p>
+            <span>Hotelrækker i det valgte udsnit</span>
+          </article>
+          <article class="metric-card card">
+            <p class="metric-label">Gennemsnitlig Days Rented</p>
+            <p id="averageDays" class="metric-value">—</p>
+            <span>Pr. registreret ophold</span>
+          </article>
+        </div>
+
+        <div class="analysis-basis card">
+          <p class="eyebrow">Datagrundlag og antagelser</p>
+          <p id="hotelBasis"></p>
+          <p id="barBasis"></p>
+        </div>
+
+        <div class="analysis-grid">
+          <article class="analysis-panel card">
+            <div class="panel-heading"><div><p class="eyebrow">Hotel</p><h3>Ophold og beløb pr. land</h3></div></div>
+            <div class="table-scroll"><table class="analysis-table"><thead><tr><th>Land</th><th>Ophold</th><th>Beløb</th></tr></thead><tbody id="countryRows"></tbody></table></div>
+          </article>
+          <article class="analysis-panel card">
+            <div class="panel-heading"><div><p class="eyebrow">Hotel</p><h3>Beløb pr. værelsestype og sæson</h3></div></div>
+            <div class="table-scroll"><table class="analysis-table"><thead><tr><th>Værelsestype</th><th>Sæson</th><th>Ophold</th><th>Beløb</th></tr></thead><tbody id="roomSeasonRows"></tbody></table></div>
+          </article>
+          <article class="analysis-panel card">
+            <div class="panel-heading"><div><p class="eyebrow">Hotel · førsteplads</p><h3>Land med højest beløb</h3></div></div>
+            <div id="topCountry" class="leader-list"></div>
+          </article>
+          <article class="analysis-panel card">
+            <div class="panel-heading"><div><p class="eyebrow">Hotel · førsteplads</p><h3>Værelsestype med højest beløb</h3></div></div>
+            <div id="topRoomType" class="leader-list"></div>
+          </article>
+          <article class="analysis-panel card analysis-panel-wide">
+            <div class="panel-heading"><div><p class="eyebrow">Bar</p><h3>Omsætning pr. drink</h3></div></div>
+            <div class="table-scroll"><table class="analysis-table"><thead><tr><th>Drink</th><th>Kategori</th><th>Stykpris</th><th>Solgt</th><th>Omsætning</th></tr></thead><tbody id="productRows"></tbody></table></div>
+          </article>
+          <article class="analysis-panel card">
+            <div class="panel-heading"><div><p class="eyebrow">Bar</p><h3>Fordeling efter antal solgte</h3></div></div>
+            <div class="table-scroll"><table class="analysis-table"><thead><tr><th>Kategori</th><th>Solgt</th><th>Andel</th></tr></thead><tbody id="categoryRows"></tbody></table></div>
+            <p id="categoryTotal" class="panel-note"></p>
+          </article>
         </div>
       </section>
     </main>

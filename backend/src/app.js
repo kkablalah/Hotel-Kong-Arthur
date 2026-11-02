@@ -6,6 +6,7 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import bookingRoutes from './routes/bookings.js';
+import analysisRoutes from './routes/analysis.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +21,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // API ruter (præsentationslag)
 app.use('/api', bookingRoutes);
+app.use('/api', analysisRoutes);
 
 // Sundhedstjek
 app.get('/health', (req, res) => {

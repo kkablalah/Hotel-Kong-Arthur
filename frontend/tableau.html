@@ -4,12 +4,16 @@
   <meta charset="UTF-8">
   <title>Hotel Kong Arthur – Tableau</title>
   <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js"></script>
-  <script src="tableau.js" defer></script>
+  <script src="tableau.js?v=HKA-U2-2026.11.02.4" defer></script>
 </head>
 <body>
   <h1>Hotel Kong Arthur</h1>
-  <p>Hent bookinger fra hotellets API til Tableau.</p>
-  <button id="connect">Hent bookinger</button>
+  <p id="connector-version">Page version: HKA-U2-2026.11.02.4</p>
+  <p id="connector-script-version">JavaScript version: waiting for script</p>
+  <p id="connector-getdata-status">getData: waiting for Tableau</p>
+  <p>Hent bookinger fra booking-API'et og beregnede hotel- og barresultater fra uge 2's analyse-API til Tableau.</p>
+  <p>Samlede mål ligger i særskilte én-rækkes tabeller; grupperede tabeller indeholder kun gruppemål.</p>
+  <button id="connect">Hent data til Tableau</button>
   <p id="message"></p>
 </body>
 </html>

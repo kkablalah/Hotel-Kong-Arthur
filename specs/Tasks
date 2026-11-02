@@ -1,4 +1,8 @@
-# Tasks: Booking-POC
+# Tasks: Hotel Kong Arthur
+
+## Historiske POC-tasks (færdigmeldt før uge 2)
+
+T1–T6 nedenfor dokumenterer den tidligere MySQL-booking-POC og dens testresultater. De er historik, ikke uge 2-opgaver eller accept af PostgreSQL-arbejdet. Uge 2 starter med åbne tasks i næste afsnit.
 
 ## T1 — Start MySQL med persistens
 
@@ -50,3 +54,100 @@
 - Gennemfør demo-flowet: opret booking i browseren, se den i listen, ret den, kontrollér værdierne og slet den; kontrollér at ændringerne ligger i MySQL.
 - Kontrollér ugyldige input, ukendt ID, Swagger UI, opstart med `docker compose -f compose.yaml up --build -d` og persistens efter genstart.
 - **Accept:** Hvert kriterium markeres opfyldt eller manglende med konkret observation; resterende mangler rapporteres uden at blive kaldt færdige.
+
+## Uge 2 — tasks og status
+
+Uge 2-tasks vurderes på egne acceptkriterier, adskilt fra POC-historikken. U2-T1's datainspektion og beslutninger for første analyseversion er afsluttet. Årsomsætning, Helenes sælgerdata og belægning forbliver åbne i særskilte tasks; Tableau-forbindelsens kode er implementeret og oversigterne delvist Tableau-testet, mens øvrige analysetabeller fortsat afventer.
+
+### U2-T1 — Undersøg analysedata og afklar regler
+
+**Status: Færdig for første analyseversion.** Regnearkene og deres felter er inspiceret, og førsteversionsreglerne er dokumenteret i `specs/Clarify`. År, Helenes sælgerattribution og belægning er udskilt som åbne krav i U2-T9–T11; de er ikke en del af denne tasks afklarede førsteversion.
+
+- Registrér kolonner, datatyper, granularitet, perioder, manglende værdier og relationer uden at ændre rå historiske værdier.
+- Hold dokumenteret kildeinformation adskilt fra de valgte POC-antagelser og beregningsregler.
+- **Accept:** Clarify beskriver kildernes faktiske felter samt beslutningerne for første version; ukendte år-, sælger- og belægningsforhold er markeret åbne og får særskilte tasks.
+
+### U2-T2 — Opret isoleret PostgreSQL-grundlag
+
+- Tilføj uge 2's PostgreSQL-service på sit eget Compose-netværk. Backend forbindes ikke til PostgreSQL i denne task; den eksisterende backend bruger fortsat MySQL.
+- Brug project name `hka-uge2` og volumen-nøgle `postgres_data` (effektivt navn `hka-uge2_postgres_data`); ændr ikke den gamle POC's MySQL-service eller volumen.
+- **Status: Færdig.** Verificeret 2026-11-02: Compose-konfigurationen validerede; kun `postgres` blev startet; healthcheck blev healthy; den isolerede volume hedder `hka-uge2_postgres_data`. Testposten `U2-T2-TEST-ONLY` overlevede en genstart af PostgreSQL og blev derefter fjernet sammen med sin testtabel. De eksisterende POC-containere og MySQL-volume blev ikke ændret.
+- **Accept:** Uge 2 PostgreSQL starter healthy, bruger sin egen project name og named volume og bevarer data ved genstart; testdata ryddes op. Den gamle MySQL-POC forbliver urørt. Ingen MySQL-migrering er forudsat. Ved afslutningen af U2-T2 brugte backend fortsat MySQL; tilslutningen til PostgreSQL blev udført særskilt i U2-T3.
+
+### U2-T3 — Etabler repository-lag og PostgreSQL-datamodel
+
+- Flyt bookingernes SQL og databaseadgang til et repository; behold validering og forretningsregler i service-laget.
+- Brug PostgreSQL for uge 2, og opret bookingskema reproducérbart fra `postgres/init.sql`.
+- Regnearksrepositories og proveniens hører til import-tasken U2-T4 og er ikke omfattet her.
+- **Status: Færdig.** Verificeret 2026-11-02: uge 2-backenden blev bygget mod `pg`, tilsluttet uge 2-PostgreSQL og serverede den eksisterende bookingkontrakt. Init-scriptet oprettede tabellen og indeksene på den eksisterende uge 2-volume og kunne genkøres uden fejl eller datatab.
+- **Accept:** Booking-SQL findes i repository, bookingskemaet kan oprettes reproducerbart, og uge 2-backenden bruger PostgreSQL. Services beholder valideringen; import og analyse er ikke inkluderet.
+
+### U2-T4 — Importér kildedata gentageligt
+
+- Importér de 1.000 hotelrækker og 30 drinkrækker fra `Datasets/` med kildeværdier intakte.
+- Brug stabil rækkeproveniens, så genkørsel af samme kilde ikke indsætter samme kilderække igen. Bevar forskellige kilderækker, selv når deres værdier måtte være ens.
+- Hold importerede værdier adskilt fra afledte beregninger; overskriv ikke kildefelter som `Price`, `Days Rented` eller `Units Sold`.
+- Importér hotelrækker til `hotel_stays`, adskilt fra browserens `bookings`; tilføj ikke datoer, værelsesnumre eller sælger.
+- Kontrollér regnearkets kolonner og datatyper, og afbryd med fil, række og felt, hvis der findes ugyldige rækker. Importen skal bruge alene `compose.uge2.yaml` og PostgreSQL.
+- **Status: Færdig.** Verificeret 2026-11-02 med `python3 scripts/import_datasets.py`, kørt to gange mod uge 2-stacken. Første og anden kørsel gav hoteldata 1.000 rækker og `SUM(Price) = 11.234.034,00 kr.` samt bardata 30 produkter, 179.958 solgte enheder og `SUM(Price × Units Sold) = 13.448.640,34 kr.` Tallene matchede en særskilt beregning direkte fra XLSX-cellerne; anden kørsel ændrede ikke rækkeantal eller summer. Importen lagrer kildens felter både typet og som rå celleværdier med fil, ark og Excel-rækkenummer; unik proveniens bevarer identiske værdier på forskellige kilderækker. Booking-CRUD blev genkontrolleret efter import (POST 201, GET 200, PUT 200, DELETE 204); testbookingen blev slettet. Gamle MySQL-POC-containere/volumen blev ikke ændret.
+- **Accept:** Første import giver de dokumenterede kilderækketællinger; gentaget import ændrer ikke antal eller kildeværdier og skaber ingen dubletter; proveniens identificerer hver række.
+
+### U2-T5 — Bevar booking-CRUD gennem repositories
+
+- Bevar API-felter, standardstatus, valideringsregler og HTTP-statuskoder for create/read/update/delete.
+- **Status: Færdig.** Verificeret 2026-11-02 gennem uge 2-frontendens Nginx-proxy: POST 201, GET-liste og GET-ID 200, PUT 200 og DELETE 204. Ugyldig e-mail, værelsesnummer, dato, status og tomt navn gav 400; ugyldig PUT ændrede ikke den gemte booking. Ukendt ID ved GET/PUT/DELETE gav 404. En tydeligt markeret booking overlevede genstart af uge 2-PostgreSQL og blev derefter slettet; efterfølgende GET gav 404. Backendens restart count forblev 0 under den endelige genstartkontrol.
+- **Accept:** Booking-CRUD, validering og HTTP-adfærd virker mod uge 2-PostgreSQL; testdata er ryddet op, og den gamle POC er urørt.
+
+### U2-T6 — Implementér førsteversionsberegninger og API
+
+- Implementér hotellets `SUM(Price)` (forventet 11.234.034 kr.) og grupperinger efter `Country`, `Room Type` og kildens `Season`.
+- Implementér antal registrerede ophold pr. relevant gruppe, drinkomsætning pr. produkt (`Price × Units Sold`), cocktail/kaffe-andele efter `Units Sold` og gennemsnitlig `Days Rented` pr. registreret ophold.
+- Placér regler i services og databaseforespørgsler i repositories. Beskriv API-input/svar, POC-antagelser og manglende tidsdimension i OpenAPI/Swagger UI.
+- **Status: Færdig.** Verificeret 2026-11-02 efter genbygning af uge 2-backenden. Routes → services → repositories er bevaret; al analyse-SQL ligger i PostgreSQL-repository, og service-laget validerer filtre og styrer beregningsreglerne. Implementeret endpoints: `/api/analysis/hotel/summary`, `/hotel/stay-counts-by-country`, `/hotel/revenue-by-country`, `/hotel/revenue-by-room-type-season`, `/hotel/top-revenue?groupBy=country|roomType`, `/hotel/average-stay-length`, `/bar/summary`, `/bar/products` og `/bar/category-shares`. Responsen indeholder datagrundlag, POC-antagelser og filtre; pengesummer sendes som decimalstrenge i DKK med to decimaler. Hotelresultater blev sammenholdt med en separat XLSX-reference: total 11.234.034,00 kr.; opholdstællinger, landebeløb, værelsestype/sæsonbeløb summerede til totalen; top-land og top-værelsestype matchede referenceberegningen, og endepunktet returnerer alle delte førstepladser. Gennemsnitlig `Days Rented` var 5,379. Barresultater matchede XLSX-reference: 13.448.640,34 kr., 179.958 enheder og alle 30 produktbeløb. Kategoriantal var Cocktail 62.077 og Coffee 117.881; andele beregnes som antal divideret med total og summerer til 100% før visningsafrunding. Gyldigt filter uden match gav 0, `null` for gennemsnit og tomme grupper; ukendte filtre/værdier og ugyldig `groupBy` gav forståelig HTTP 400. Swagger UI svarede 200, og OpenAPI beskriver svar/fejl. Booking-CRUD efter genbygning: POST 201, GET 200, PUT 200, DELETE 204; testbooking slettet. Gamle POC-containere fortsatte med at køre.
+- **Accept:** Hotellets total er 11.234.034 kr.; grupperinger og afledte værdier kan genskabes fra importerede kilderækker; kategoriandele summerer til 100% inden for afrunding. Intet resultat mærkes som årsomsætning, Helene-salg eller belægning.
+
+### U2-T7 — Vis API-beregninger i frontend
+
+- Tilføj visninger for de aftalte hotel- og barberegninger.
+- Hent data via REST API, vis periode og enheder, og håndtér API-fejl/tomme resultater tydeligt.
+- Bevar bookingbrugerfladen og det eksisterende design; brug kun relative `/api/analysis/`-kald og formatér beløb som DKK med to decimaler.
+- **Accept:** Frontendens viste værdier stammer fra API-svar og kan sammenholdes med samme svar i API-dokumentationen.
+- **Status: Implementeret; browserbekræftet delvist.** Verificeret 2026-11-02: uge 2-frontend blev genbygget med `docker compose --env-file .env -f compose.uge2.yaml up -d --build frontend`. HTTP-kontrol af analysesiden, HTML, JavaScript og CSS gav 200; analysen bruger relative `/api/analysis/`-kald uden hardkodede analysebeløb. Alle ni endpoint-paths (top-endpointet med begge `groupBy`-værdier) gav HTTP 200. API-test af booking-CRUD efter genbygning gav POST 201, GET 200, PUT 200 og DELETE 204; testbookingen blev slettet. **Brugerbekræftet i browser:** analyseoversigten viste forventede totaler; Brazil- og China-filtre virkede; alle lande gendannede 1.000 ophold og 11.234.034 kr.; Coffee ændrede barbeløbet og viste kaffeprodukter, mens hoteltallene var uændrede; testbooking blev oprettet, redigeret og slettet. Øvrige filtre, Opdatér-knappen og genindlæsning er ikke bekræftet. Browserkontrollerne er brugerens observationer, ikke agentens automatiserede visuelle test.
+
+### U2-T8 — Forbind Tableau til de dokumenterede API-data
+
+- Bevar Tableau-kravet fra den oprindelige opgave, og forbind de relevante Tableau-visninger til de samme API-beregninger og datadefinitioner.
+- Dokumentér refresh-adfærd og begrænsninger; afklar dem i `specs/Clarify` før valg af løsning.
+- **Accept:** Tableau-resultater bruger de aftalte API-definitioner og stemmer med API/frontend for samme periode og data.
+- **Status: Implementeret; Tableau-verifikation delvis.** Den eksisterende Web Data Connector 2.3-teknik i `frontend/tableau.html` og `frontend/tableau.js` er udvidet uden at fjerne bookingtabellen. Tableau-fejlen skyldtes, at `getData` allerede sendte `body.data` til mapperne, mens hoteloversigtens mapper læste `body.data` endnu en gang; det gav en undefined-række. Alle analysemappere bruger nu envelope-feltet `data` konsekvent. Efter genbygning blev den serverede `tableau.js` eksekveret i en testharness med de faktiske JSON-svar fra hvert endpoint: alle 10 analysevarianter (top-endpointets to `groupBy`-værdier) leverede rækker med alle forventede felter og gyldige typer. Hoteloversigtens ene række var 1.000 ophold, 11.234.034,00 kr. og gennemsnit 5,379. Browser-API'erne returnerede HTTP 200; baroversigten var 13.448.640,34 kr. Schema-kontrol fandt 11 tabeller. Genbygget kun uge 2-frontend med `docker compose --env-file .env -f compose.uge2.yaml build frontend` og `up -d --no-deps frontend`. Adresse: `http://localhost:8081/tableau.html`. Totalmål ligger kun i singleton-tabeller; gruppetabeller gentager ikke totalsummer. Manuel Tableau **Refresh** er dokumenteret; automatisk opdatering er uafklaret. Brugeren har bekræftet korrekt visning af hoteloversigt, baroversigt, hotelbeløb pr. land og værelsestype/sæson samt vellykket manuel Refresh for hoteloversigt, baroversigt og landefordeling. Øvrige tabeller er ikke færdigtestet; U2-T8 markeres ikke færdig.
+
+**Brugerbekræftet Tableau-test:** Workbook `Hotel-Kong-Arthur-uge2-API`, connectorversion `HKA-U2-2026.11.02.4`. Hoteloversigt: 1.000 ophold, 11.234.034 kr., gennemsnit 5,379. Baroversigt: 30 produkter, 179.958 enheder, 13.448.640,34 kr. Hoteloversigt, baroversigt, hotelbeløb pr. land og værelsestype/sæson vises korrekt. Manuel Refresh lykkedes for hoteloversigt, baroversigt og landefordeling. De øvrige Tableau-tabeller er ikke færdigtestet.
+
+**Cache- og mappingkontrol 2026-11-02:** Synlig version `HKA-U2-2026.11.02.4` og script-URL `tableau.js?v=HKA-U2-2026.11.02.4` er serveret via port 8081. Den versionsmærkede JavaScript blev indlæst i harness; alle ti analysetabellers `getData` blev kørt mod faktiske API-svar og gav alle felter. Et svar uden `registeredStays` gav eksplicit fejl med version og tabel-ID, ikke en nulværdi. Tableau Desktop har bekræftet oversigterne og visning af hotelbeløb pr. land og værelsestype/sæson. Manuel Refresh er bekræftet for hoteloversigt, baroversigt og landefordeling; de øvrige analysetabeller mangler færdigtest.
+
+### U2-T9 — Afklar og implementér årsomsætning særskilt
+
+- Afvent dokumenteret rapporteringsår og relevant datodimension; opfind ikke datoer eller år.
+- Når kildedata og dato-/indregningsregel foreligger, tilføj årsomsætning som særskilt endpoint og visning.
+- **Accept:** Beløbet afgrænses til et dokumenteret år og kan efterprøves mod daterede kilderækker; indtil da forbliver tasken åben uden beregnet årsresultat.
+
+### U2-T10 — Afklar og implementér Helenes salg særskilt
+
+- Afvent kildedata med sælgerattribution og relevant salgsperiode; tilskriv ikke salg til Helene ud fra antagelser.
+- Når kildedata og identitetsregel foreligger, tilføj hendes årsomsætning og eventuel kategoriandel.
+- **Accept:** Resultatet bygger på daterede kilderækker med dokumenteret attribution; uden sådanne data forbliver opgaven åben.
+
+### U2-T11 — Afklar og implementér belægning særskilt
+
+- Afvent bookingdatoer/status samt dokumenteret værelseskapacitet og tilgængelighedsregler.
+- Aftal formel, periodisering, aflysninger og overlap før endpointet implementeres.
+- **Accept:** Beregningen kan verificeres for en valgt periode mod dokumenteret kapacitet og bookingdata; uden grundlaget vises ingen belægningsprocent.
+
+### U2-T12 — Verificér uge 2 og opdatér dokumentation
+
+**Status: Delvist verificeret; dokumentationen opdateret 2026-11-02.** T2–T8's implementering og kendte tekniske kontroller er registreret; T7's browserkontroller er tilskrevet brugeren. U2-T8 er delvist bekræftet i Tableau Desktop: hoteloversigt, baroversigt, hotelbeløb pr. land og værelsestype/sæson vises korrekt; manuel Refresh lykkedes for hoteloversigt, baroversigt og landefordeling. Øvrige analysetabeller mangler færdigtest. Øvrige browserfiltre samt Opdatér/genindlæsning er ikke bekræftet, og opstart/import fra en frisk kopi er ikke gennemført.
+
+- Verificér booking-CRUD, analyseberegninger mod kildedata, OpenAPI/Swagger UI, frontendforbrug, Compose-opstart og persistens.
+- Gennemgå at den gamle POC's database og volumen ikke er berørt.
+- Opdatér taskstatus med konkrete observationer; bevar de historiske T1–T6-resultater uændrede.
+- **Accept:** Hvert uge 2-acceptkriterium er verificeret eller tydeligt markeret som åbent/blokeret af data eller beslutning; intet uafprøvet arbejde kaldes færdigt.

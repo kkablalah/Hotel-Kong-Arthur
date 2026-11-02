@@ -1,0 +1,86 @@
+# Clarify: Hotel Kong Arthur – uge 2
+
+## Formål og grundlag
+
+Denne Clarify udvider booking-POC'en til hotel- og baranalyse. Den afklarer ikke forhold, som ikke kan fastslås ud fra de eksisterende filer. `specs/Specify` er kravgrundlaget; `specs/Tasks` beholder tidligere POC-testresultater som historik.
+
+## Bekræftede beslutninger
+
+- Booking-CRUD fra POC'en bevares.
+- PostgreSQL erstatter MySQL som databasekrav for uge 2. Dette følger brugerens beslutning om tillægsopgaven.
+- API'et bruger REST/JSON og dokumenteres i OpenAPI, som fortsat skal vises via Swagger UI.
+- Backend følger tre lag: routes → services → repositories.
+- Frontenden henter analyseberegninger fra API'et og viser dem.
+- Systemet startes via Docker Compose. Uge 2 bruger særskilt Compose project name og PostgreSQL-volume, så MySQL-POC'ens data ikke berøres.
+- Tableau genbruger den eksisterende WDC 2.3-teknik (`tableau.html`/`tableau.js`) og samme `/tableau.html`-adresse. Connectoren er udvidet med uge 2-analysetabeller, mens bookingtabellen bevares.
+- Tableau henter de beregnede mål fra `/api/analysis/`; connectoren genberegner ikke målene. Samlede totaler ligger i hver sin én-rækkes tabel og gentages ikke på grupperede rækker.
+- Manuel Tableau **Refresh** er den dokumenterede opdateringsmetode. Automatisk opdatering er ikke afklaret med lærerne og er ikke lovet.
+- Implementeret isolation: Compose project name `hka-uge2` og volumen-nøgle `postgres_data`, som giver `hka-uge2_postgres_data`.
+- Ingen historiske værdier, rådata eller beregningsregler må opfindes.
+- For første analyseversion behandles hotelarkets `Price` som samlet pris for ét registreret ophold. Dette er en POC-antagelse, ikke en dokumenteret egenskab ved kildedata.
+- Hotellets samlede beløb beregnes som `SUM(Price)`; forventet resultat er 11.234.034 kr. Samme beløb grupperes separat efter `Country`, `Room Type` og kildens `Season`.
+- Hver hotelrække tælles som ét registreret ophold. Det betyder ikke nødvendigvis én unik gæst.
+- Drinkomsætning beregnes som `Price × Units Sold`, med POC-antagelsen om, at `Price` er stykpris.
+- Cocktail/kaffe-procenter beregnes efter antal solgte enheder.
+- Ekstra nøgletal for første version er gennemsnitlig `Days Rented` pr. registreret hotelophold.
+- Kalenderår, datoer og sælgeroplysninger må ikke udledes eller opfindes. Årsomsætning, Helenes salg og belægning er fortsat åbne krav, som ikke indgår i første beregningsleverance.
+- Kildeimport skal bevare værdier fra regnearkene og kunne gentages uden at oprette dubletter. Identisk indhold på to kilderækker er ikke i sig selv grund til at slette en række.
+
+## Beregninger, datakrav og status
+
+| Beregning/visning | Nødvendige data | Hvad findes / mangler i denne kopi | Åben regel |
+|---|---|---|---|
+| Belægning pr. valgt periode og over tid | Bookingens værelse og datoer, bookingstatus; værelser/kapacitet og perioder uden tilgængelighed | POC har `roomNumber`, `checkIn`, `checkOut`, `status`; hotelarket har kun `Days Rented`, ingen ind-/uddatoer eller værelses-ID. Ingen tilgængeligheds-/kapacitetsplan. | Tæller, nævner, dato-/natgrænser, aflysninger, no-shows, overlap og delperioder. |
+| Gæstefordeling pr. land | Gæst/booking, land | Hotelarket har `First Name`, `Family Name`, `Country` på 1.000 rækker; ingen booking-ID. Kan tælle rækker pr. land, men ikke sikkert unikke personer eller koble dem til POC-bookinger. | Tælleenhed (rækker/bookinger/personer) og håndtering af ukendt land. |
+| Hotelomsætning efter værelsestype | Samlet opholdspris, værelsestype | Hotelarket har `Room Type`, `Days Rented`, `Price` på alle 1.000 rækker; ingen dato eller booking-ID. Første version summerer `Price` under POC-antagelsen om samlet opholdspris. | Prisens faktiske forretningsbetydning er ikke bekræftet af kilden; POC-antagelsen bruges indtil videre. |
+| Hotelomsætning efter sæson | Samlet opholdspris, kildens sæsonklassifikation | Hotelarket indeholder `Season` (`low`, `mid`, `high`) på alle rækker. Første version grupperer `Price` direkte efter denne kolonne uden at udlede datoer eller sæsongrænser. | Om sæsonetiketterne svarer til bestemte kalenderperioder er ikke dokumenteret; brug kildeværdien som den står. |
+| Hotelomsætning efter gæsteland | Samlet opholdspris, land | `Country` og `Price` findes på alle 1.000 rækker. Første version grupperer `Price` efter `Country`; hver række tælles som ét registreret ophold, ikke nødvendigvis unik gæst. | Betydningen af manglende/ukendt land ved fremtidige data. |
+| Årlig hotelomsætning | Omsætning og dato, der afgør rapporteringsår | Hotelarket har ingen dato eller år. Årsomsætning kan derfor ikke beregnes fra det alene. | Indregningsdato, rapporteringsår og visning af år uden data. |
+| Omsætning pr. drink og rangering | Produkt, kategori, antal, stykpris | Drinkarket har `Drink Name`, `Category`, `Price (DKK)`, `Units Sold` på 30 produkter. Første version bruger `Price × Units Sold` under POC-antagelsen om stykpris. | Stykpris er en POC-antagelse; ingen periode, transaktionsdato, rabat/retur eller skat er dokumenteret. |
+| Helenes årlige salg | Salgsdato, sælgeridentitet, salgsværdi | Drinkarket har ingen sælger eller dato. Salg kan ikke tilskrives Helene Christine eller afgrænses til et år. | Identitetsmatch, tilskrivning, rapporteringsår og tomt resultat. |
+| Cocktail/kaffe-fordeling | Kategori og antal solgte | Kategorien og `Units Sold` findes for alle 30 produkter. Første version beregner mængdeandelen pr. kategori for alle registrerede produkter. | Salgsperiode eller sælgertilskrivning findes ikke i arket. |
+| Helenes cocktail-/kaffefordeling | Sælger, produktkategori, antal eller omsætning | Kategorien og antal findes samlet pr. produkt, men ingen sælger. Første version kan vise samlet kategoriandel, ikke Helenes andel. | Sælgerafgrænsning mangler; Helenes beregning forbliver åben. |
+| Gennemsnitlig opholdslængde | `Days Rented`, antal registrerede ophold | Hotelarket har værdien for alle 1.000 rækker; første version beregner gennemsnittet pr. række/registreret ophold. | Ingen kalenderperiode kan knyttes til gennemsnittet. |
+| Belægning | Bookingdatoer/-status, værelses-/kapacitetskalender | Hotelarket mangler datoer og værelses-ID; POC-bookingdata mangler typekapacitet og tilgængelighed. | Formel, periodisering, aflysninger, overlap og kapacitet mangler. |
+| Ekstra forretningsmål | Valgt mål og tilhørende datakilde | Valgt for første version: gennemsnitlig `Days Rented` pr. registreret ophold. | Formålet er opholdslængde; ingen kalenderperiode kan vises. |
+
+## Observerede data kontra uafklarede regler
+
+Filerne er `Datasets/international_names_with_rooms_1000.xlsx` og `Datasets/drinks_menu_with_sales.xlsx`, begge med ét ark (`Sheet1`). Første fil har 1.000 datarækker og felterne `First Name`, `Family Name`, `Country`, `Room Type`, `Days Rented`, `Season`, `Price`. Anden fil har 30 datarækker og felterne `Drink Name`, `Category`, `Price (DKK)`, `Units Sold`. De undersøgte celler i disse kolonner er udfyldt.
+
+Hotelarket har 20 lande, otte værelsesbetegnelser, `Days Rented` fra 1 til 10 og sæsonetiketterne `low`, `mid`, `high`. `Price` er numerisk i alle rækker og spænder fra 1.038 til 39.450. Værelsesetiketterne omfatter `Standard Single`, `Standard Double` og `Superior Double`; de er ikke ordret ens med de danske navne i kravspecifikationen. Der er ingen booking-ID, individuelle værelsesnumre, check-in/check-out-datoer eller kalenderår. `Days Rented` er kolonnenavnets ordlyd; om det præcist betyder nætter er ikke dokumenteret.
+
+Drinkarket har 20 `Cocktail`-produkter og 10 `Coffee`-produkter. `Price (DKK)` er numerisk fra 33,43 til 149,48; `Units Sold` er numerisk fra 2.068 til 14.656. Første version summerer antal pr. kategori og beregner `Price × Units Sold` pr. drink under POC-antagelsen om stykpris. Arket indeholder hverken sælger, salgsdato, transaktions-ID eller rapporteringsperiode, så det viser ikke Helene Christines individuelle eller årlige salg.
+
+## Tableau-beregning og prisens betydning
+
+Den nuværende Tableau-beregning for hotellets samlede beløb er `SUM(Price)`; der ganges ikke med `Days Rented`. Kontrol af `Datasets/international_names_with_rooms_1000.xlsx` giver 1.000 udfyldte `Price`-værdier og summen **11.234.034 kr.**, samme beløb som Tableau viser. Dette er summen af kolonnen, ikke dokumenteret årsomsætning: arket indeholder hverken datoer eller rapporteringsår. Første analyseversion bruger dette beløb og grupperer samme `Price`-sum efter land, værelsestype og kildens sæson.
+
+**Dokumentation i filen:** Kolonnen hedder `Price`; der er ingen beskrivelse af, om beløbet er pr. nat eller for hele opholdet. `Days Rented` er et heltal fra 1 til 10. Filen har ingen kommentarer eller forklarende metadata om prisens beregningsgrundlag.
+
+**Observation i data:** `Price` stiger typisk med `Days Rented`, også når rækker sammenlignes inden for samme `Room Type` (korrelationen inden for hver type ligger cirka 0,96–0,99). Prisen pr. `Days Rented` er forholdsvis ens inden for hver værelsestype, men varierer mellem rækker.
+
+**Vurdering:** Mønstret er foreneligt med, at `Price` er totalprisen for et ophold, der omtrent vokser med opholdslængden. Det beviser det ikke; datasættet forklarer ikke prisformlen eller andre prisforskelle.
+
+**POC-beslutning:** Efter gruppens beslutning behandles `Price` i første analyseversion som samlet pris for ét ophold, og `SUM(Price)` bruges som hotellets samlede beløb. Dette er en udtrykkelig POC-antagelse, ikke noget filens dokumentation beviser. Årsomsætning må fortsat ikke angives uden dokumenteret periode.
+
+Den oprindelige specifikation nævner hotellets 214 værelser og cirka 428 gæstepladser, men ikke kapacitet pr. værelse eller fordeling pr. type. De må ikke udledes af de 1.000 rækker. Dataarket giver mulighed for sammenligning af `Price` efter land, type og angivet sæson som kolonneberegninger; det beviser ikke, at `Price` er omsætning eller at sæsonetiketterne følger bestemte datoer.
+
+## Åbne spørgsmål for krav uden for første analyseversion
+
+| ID | Spørgsmål | Afhængige krav |
+|---|---|---|
+| Q-01 | Er disse to regneark hele det tilgængelige historiske datagrundlag, eller findes der yderligere daterede hotel- og barsalgsdata? | Årsomsætning, Helenes salg og belægning. |
+| Q-02 | Hvad er belægningsformlen, dens tidsenhed, periodegrænser og regler for aflysninger, overlap og utilgængelige værelser? | Belægning. |
+| Q-03 | Hvilket dokumenteret rapporteringsår og hvilken indregningsdato skal bruges til årsomsætning? | Årlig hotel- og baromsætning. Førsteversions-`SUM(Price)` er ikke årsafgrænset. |
+| Q-04 | Hvad er sæsonernes præcise datoer, især jul/december, og hvordan fordeles ophold hen over sæsoner? | Sæsonomsætning. |
+| Q-05 | Hvilket år skal vises som standard, og hvordan vælges periode i API/frontend? | Årlig hotel- og baromsætning. |
+| Q-06 | Hvor mange værelser er der i hver værelsestype, og findes der kapacitets-/lukningsdata pr. værelse? | Belægning og værelsestypeomsætning. |
+| Q-07 | Indeholder barsalgsdata sælger, dato, antal, pris/omsætning og kategori? Hvordan identificeres Helene Christine? | Helenes salg og barberegninger. |
+| Q-10 | Hvordan håndteres manglende, ugyldige eller modstridende historiske rækker? | Alle analyser og synlige databegrænsninger. |
+| Q-11 | Manuel Tableau **Refresh** er den nuværende metode; skal automatisk opdatering understøttes, og hvilken Tableau-version skal accepteres? | Uge 2 API-forbindelsen er implementeret med samme WDC 2.3-teknik og API-definitioner. Automatisk opdatering og Tableau-version skal fortsat afklares/testes med lærerne. |
+| Q-12 | Hvordan dokumenteres og anvendes project name `hka-uge2` og den separate volumen `hka-uge2_postgres_data` i uge 2's opstart? | **Afklaret og implementeret:** `compose.uge2.yaml` bruger project name `hka-uge2` og volume key `postgres_data`; README dokumenterer opstarten. |
+
+## Klar til planlægning
+
+Arkitektur, databasevalg, API-format, førsteversionsregler og databevarende isolation er besluttet og implementeret for uge 2. Kildedata er importeret; førsteversions-endpoints og analysefane findes. Tableau-WDC er udvidet til analyse-API'et; brugeren har bekræftet korrekt visning af hoteloversigt, baroversigt, hotelbeløb pr. land og værelsestype/sæson samt vellykket manuel Refresh af hoteloversigt, baroversigt og landefordeling. Øvrige analysetabeller mangler færdigtest. Den faktiske forretningsbetydning af `Price` er ikke dokumenteret; POC-antagelserne er fortsat eksplicitte. Daterede data til årsresultater, sælger til Helene og kapacitets-/bookinggrundlag til belægning mangler. Se `specs/Converge` for status mellem implementering, teknisk test og brugerbekræftelser.

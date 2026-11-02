@@ -1,16 +1,24 @@
 openapi: 3.0.3
 info:
-  title: Hotel Kong Arthur - Booking API
-  description: REST/JSON API til oprettelse, visning, rettelse og sletning af hotelbookinger.
-  version: 1.1.0
+  title: Hotel Kong Arthur API
+  description: REST/JSON API til booking-CRUD og førsteversionsberegninger på importerede hotel- og bardata.
+  version: 1.2.0
 servers:
   - url: http://localhost:3000/api
-    description: Lokal udvikling
+    description: Gammel POC – direkte API
   - url: http://localhost:8080/api
-    description: Via frontendens Nginx-proxy
+    description: Gammel POC – via Nginx
+  - url: http://localhost:3001/api
+    description: Uge 2 – direkte API
+  - url: http://localhost:8081/api
+    description: Uge 2 – via frontendens Nginx-proxy
 tags:
   - name: bookings
     description: Administration af hotelbookinger
+  - name: analysis-hotel
+    description: Analyse af importerede hotelophold
+  - name: analysis-bar
+    description: Analyse af importerede bardata
 paths:
   /bookings:
     get:
@@ -110,8 +118,268 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /analysis/hotel/summary:
+    get:
+      tags: [analysis-hotel]
+      summary: Hotelbeløb, registrerede ophold og gennemsnitlig Days Rented
+      description: Beløbet er SUM(Price) fra de 1.000 importerede hotelrækker. Price behandles som samlet pris for ét ophold (POC-antagelse); resultatet har ingen dokumenteret årsperiode.
+      operationId: getHotelSummary
+      parameters:
+        - $ref: '#/components/parameters/HotelCountryFilter'
+        - $ref: '#/components/parameters/HotelRoomTypeFilter'
+        - $ref: '#/components/parameters/HotelSeasonFilter'
+      responses:
+        '200':
+          description: Hotelmål; uden match returneres nulbeløb, nul ophold og null for gennemsnit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelAnalysisEnvelope'
+              example:
+                dataBasis:
+                  source: Datasets/international_names_with_rooms_1000.xlsx, ark Sheet1; 1.000 importerede kilderækker.
+                  measure: Hver række tælles som ét registreret ophold; det er ikke nødvendigvis én unik gæst.
+                  assumptions: ["Price behandles som samlet pris for ét ophold (POC-antagelse).", "Beløbet har ingen dokumenteret periode."]
+                filters: {}
+                data: { registeredStays: 1000, totalAmount: '11234034.00', averageDaysRented: 5.379 }
+        '400':
+          $ref: '#/components/responses/AnalysisValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /analysis/hotel/stay-counts-by-country:
+    get:
+      tags: [analysis-hotel]
+      summary: Antal registrerede ophold pr. land
+      description: Tæller hotelarkets rækker, ikke unikke gæster. Valgfrie hotel-filtre kan give en tom liste.
+      operationId: getHotelStayCountsByCountry
+      parameters:
+        - $ref: '#/components/parameters/HotelCountryFilter'
+        - $ref: '#/components/parameters/HotelRoomTypeFilter'
+        - $ref: '#/components/parameters/HotelSeasonFilter'
+      responses:
+        '200':
+          description: Række pr. land; data er en tom liste uden match.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Hotelarkets 1.000 importerede rækker., measure: En række er ét registreret ophold., assumptions: [] }
+                filters: {}
+                data: [{ country: Australia, registeredStays: 53 }]
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /analysis/hotel/revenue-by-country:
+    get:
+      tags: [analysis-hotel]
+      summary: Hotelbeløb pr. land
+      description: Summer Price pr. land under POC-antagelsen om samlet opholdspris.
+      operationId: getHotelRevenueByCountry
+      parameters:
+        - $ref: '#/components/parameters/HotelCountryFilter'
+        - $ref: '#/components/parameters/HotelRoomTypeFilter'
+        - $ref: '#/components/parameters/HotelSeasonFilter'
+      responses:
+        '200':
+          description: Grupperet hotelbeløb; amount er decimalstreng i DKK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Hotelarkets 1.000 importerede rækker., measure: SUM(Price) grupperet efter Country., assumptions: [Price behandles som samlet pris for ét ophold (POC-antagelse).] }
+                filters: {}
+                data: [{ country: Australia, registeredStays: 53, amount: '571727.00' }]
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /analysis/hotel/revenue-by-room-type-season:
+    get:
+      tags: [analysis-hotel]
+      summary: Hotelbeløb pr. værelsestype og kildens sæson
+      description: Summer Price for hver kombination af Room Type og Season. Sæson er kildens etiket; datoer udledes ikke.
+      operationId: getHotelRevenueByRoomTypeSeason
+      parameters:
+        - $ref: '#/components/parameters/HotelCountryFilter'
+        - $ref: '#/components/parameters/HotelRoomTypeFilter'
+        - $ref: '#/components/parameters/HotelSeasonFilter'
+      responses:
+        '200':
+          description: Liste med værelsestype, sæson, opholdstal og beløb; tom liste uden match.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Hotelarkets 1.000 importerede rækker., measure: SUM(Price) grupperet efter Room Type og Season., assumptions: [Price behandles som samlet pris for ét ophold (POC-antagelse).] }
+                filters: {}
+                data: [{ roomType: Grand Lit, season: high, registeredStays: 43, amount: '401118.00' }]
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /analysis/hotel/top-revenue:
+    get:
+      tags: [analysis-hotel]
+      summary: Land eller værelsestype med højest samlet hotelbeløb
+      description: Returnerer alle delte førstepladser. Beløbet er ikke årsomsætning.
+      operationId: getTopHotelRevenue
+      parameters:
+        - in: query
+          name: groupBy
+          required: true
+          schema: { type: string, enum: [country, roomType] }
+          description: Dimension, der rangeres.
+        - $ref: '#/components/parameters/HotelCountryFilter'
+        - $ref: '#/components/parameters/HotelRoomTypeFilter'
+        - $ref: '#/components/parameters/HotelSeasonFilter'
+      responses:
+        '200':
+          description: maximumAmount og alle leaders; uden match er maximumAmount null og leaders tom.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Hotelarkets importerede rækker., measure: Største SUM(Price) efter valgt dimension., assumptions: [Price behandles som samlet pris for ét ophold (POC-antagelse).] }
+                filters: {}
+                data: { groupBy: country, maximumAmount: '767699.00', leaders: [{ value: South Korea, amount: '767699.00' }] }
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /analysis/hotel/average-stay-length:
+    get:
+      tags: [analysis-hotel]
+      summary: Gennemsnitlig Days Rented pr. registreret ophold
+      description: Bruger kildens Days Rented uden at antage en kalenderperiode eller ændre feltets betydning til nætter.
+      operationId: getAverageStayLength
+      parameters:
+        - $ref: '#/components/parameters/HotelCountryFilter'
+        - $ref: '#/components/parameters/HotelRoomTypeFilter'
+        - $ref: '#/components/parameters/HotelSeasonFilter'
+      responses:
+        '200':
+          description: Gennemsnit og antal rækker; gennemsnittet er null uden match.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Hotelarkets importerede rækker., measure: AVG(Days Rented) pr. række., assumptions: [] }
+                filters: {}
+                data: { registeredStays: 1000, averageDaysRented: 5.49 }
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /analysis/bar/summary:
+    get:
+      tags: [analysis-bar]
+      summary: Samlet baromsætning og antal solgte enheder
+      description: Summerer Price × Units Sold; Price behandles som stykpris (POC-antagelse). Ingen periode eller sælger er tilgængelig.
+      operationId: getBarSummary
+      parameters:
+        - $ref: '#/components/parameters/BarCategoryFilter'
+      responses:
+        '200':
+          description: Omsætning i DKK, produktantal og antal enheder; uden match returneres nuller.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BarAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Drinkarkets 30 importerede produktrækker., measure: SUM(Price × Units Sold)., assumptions: [Price behandles som stykpris (POC-antagelse)., Ingen salgsperiode eller sælger er registreret.] }
+                filters: {}
+                data: { productCount: 30, unitsSold: 179958, totalRevenue: '13448640.34' }
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /analysis/bar/products:
+    get:
+      tags: [analysis-bar]
+      summary: Omsætning pr. drink
+      description: Returnerer stykpris, Units Sold og Price × Units Sold pr. produkt. Omsætningen er ikke årsomsætning eller Helenes salg.
+      operationId: getBarProducts
+      parameters:
+        - $ref: '#/components/parameters/BarCategoryFilter'
+      responses:
+        '200':
+          description: Liste sorteret efter omsætning; tom liste uden match. Beløb er decimalstrenge i DKK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BarAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Drinkarkets importerede produktrækker., measure: Price × Units Sold pr. drink., assumptions: [Price behandles som stykpris (POC-antagelse).] }
+                filters: {}
+                data: [{ drinkName: Espresso Martini, category: Cocktail, unitPrice: '100.00', unitsSold: 1200, revenue: '120000.00' }]
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /analysis/bar/category-shares:
+    get:
+      tags: [analysis-bar]
+      summary: Cocktail- og kaffeandel efter solgte enheder
+      description: Andel beregnes som kategoriens Units Sold divideret med alle kategoriernes Units Sold. SharePercent returneres uden afrunding i beregningsreglen.
+      operationId: getBarCategoryShares
+      responses:
+        '200':
+          description: Kategoriernes andele udgør samlet 100 procent før visningsafrunding; uden produkter er listen tom.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BarAnalysisEnvelope' }
+              example:
+                dataBasis: { source: Drinkarkets importerede produktrækker., measure: Kategoriandel = kategoriens Units Sold / samlet Units Sold., assumptions: [Ingen salgsperiode eller sælger er registreret.] }
+                filters: {}
+                data: { totalUnitsSold: 179958, categories: [{ category: Cocktail, unitsSold: 62077, totalUnitsSold: 179958, sharePercent: 34.49527111881661 }, { category: Coffee, unitsSold: 117881, totalUnitsSold: 179958, sharePercent: 65.50472888118338 }] }
+        '400': { $ref: '#/components/responses/AnalysisValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
 components:
+  parameters:
+    HotelCountryFilter:
+      in: query
+      name: country
+      required: false
+      schema: { type: string }
+      description: Valideres mod landene i importen.
+    HotelRoomTypeFilter:
+      in: query
+      name: roomType
+      required: false
+      schema: { type: string }
+      description: Valideres mod værelsestyperne i importen.
+    HotelSeasonFilter:
+      in: query
+      name: season
+      required: false
+      schema: { type: string }
+      description: Valideres mod sæsonetiketterne i importen.
+    BarCategoryFilter:
+      in: query
+      name: category
+      required: false
+      schema: { type: string }
+      description: Valideres mod kategorierne i importen.
   schemas:
+    AnalysisDataBasis:
+      type: object
+      properties:
+        source: { type: string }
+        measure: { type: string }
+        assumptions:
+          type: array
+          items: { type: string }
+      required: [source, measure, assumptions]
+    HotelAnalysisEnvelope:
+      type: object
+      description: Hotelrespons med kildegrundlag, filtre og beregningsresultat. Beløb er decimalstrenge i DKK for at bevare præcision.
+      properties:
+        dataBasis: { $ref: '#/components/schemas/AnalysisDataBasis' }
+        filters:
+          type: object
+          additionalProperties: { type: string }
+        data:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: { type: object, additionalProperties: true }
+      required: [dataBasis, filters, data]
+    BarAnalysisEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/HotelAnalysisEnvelope'
+    AnalysisError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Ugyldig værdi for "season". Mulige værdier: high, low, mid.
+      required: [error]
     Booking:
       type: object
       properties:
@@ -214,6 +482,12 @@ components:
           example: email skal være en gyldig e-mailadresse på højst 100 tegn.
       required: [error]
   responses:
+    AnalysisValidationError:
+      description: Ukendt filter, ukendt filterværdi eller manglende/ugyldigt groupBy.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AnalysisError'
     ValidationError:
       description: Input mangler eller overholder ikke bookingreglerne. Ingen data ændres.
       content:

@@ -1,0 +1,55 @@
+# Converge: oprindelige krav og uge 2
+
+Kontrolstatus pr. 2. november 2026. Sammenholder `specs/Specify` (oprindelige
+krav og PostgreSQL-tillæg), `specs/Clarify`, `specs/Plan`, `specs/Tasks`, den
+aktuelle kode og README. Denne rapport skelner mellem implementering,
+programmatisk/API-test og brugerens browserbekræftelse. Gamle POC-testresultater
+står fortsat som historik i `specs/Tasks` og `Feature/Implement.md`.
+
+## Statusnøgler
+
+- **Implementeret:** Kode eller dokumentation findes.
+- **Testet:** Kontrollen er udført via API, database, Compose eller en anden
+  reproducerbar teknisk kontrol.
+- **Brugerbekræftet i browser:** Den konkrete observation kommer fra brugerens
+  browserkontrol. Den udvides ikke til andre filtre eller genindlæsning.
+- **Manglende/åben:** Kode eller nødvendige data/regler mangler; en antagelse
+  bruges ikke som erstatning.
+
+## Kravkontrol
+
+| Kravområde og grundlag | Implementeret | Testet / bekræftet | Status og resterende arbejde |
+|---|---|---|---|
+| Booking CRUD (oprindelig FR-01, US-01–04; uge 2 bevarer POC-adfærd) | Ja: browser og REST-API bruger PostgreSQL i uge 2. | API POST 201, GET 200, PUT 200, DELETE 204 efter frontend-build. **Brugerbekræftet:** opret, redigér og slet testbooking i uge 2-browseren. De historiske MySQL-tests bevares separat. | Opfyldt for booking CRUD. Brugerens besked bekræfter ikke browser-genindlæsning; det registreres ikke som testet her. |
+| Nye/ændrede data kan læses (FR-02, AC-05.1–05.4) | Bookingendpoints læser og skriver løbende til PostgreSQL. Regneark importeres med `scripts/import_datasets.py`. | Import kørt to gange uden ændring i antal/summer; booking CRUD testet. | Delvist. Regnearksændringer bliver synlige efter manuel genkørsel af hele idempotente importkommandoen. Der er ikke verificeret inkrementel import eller aftalt opdateringsinterval; AC-05.3/05.4 er ikke fuldt opfyldt. |
+| Første hotelberegninger (FR-04, FR-06, US-07/08) | API leverer `SUM(Price)`, rækkeantal pr. land, beløb pr. land, værelsestype/sæson, begge topplaceringer og gennemsnitlig `Days Rented`. Frontenden viser resultaterne. | Uafhængig regnearksreference: hotelbeløb 11.234.034,00 kr.; grupper summerer til total; land/type-topresultat verificeret. Gennemsnit 5,379. **Brugerbekræftet:** oversigtens total; landefiltrene Brazil og China; nulstilling til alle lande viste 1.000 rækker og 11.234.034 kr. | Første versionsberegninger implementeret og testet. Hotelrækken tælles som registreret ophold, ikke unik gæst. `Price` som samlet opholdsbeløb og `Days Rented`-gennemsnittet er POC-definitioner. Periodedimension og kalenderår findes ikke. Andre land-/type-/sæsonfiltre og genindlæsning er ikke brugerbekræftet. |
+| Barberegninger (FR-07–09, US-10–12) | API leverer samlet `Price × Units Sold`, pr. drink og kategoriandele efter antal. Frontenden har kategori-filter. | Uafhængig reference: 13.448.640,34 kr., 179.958 enheder og alle 30 produktbeløb. Kategoriantal og andele verificeret. **Brugerbekræftet:** Coffee ændrede barbeløbet og viste kun kaffeprodukter; hoteltallene var uændrede. | Samlet produktsalg implementeret. Kategorien er POC-antagelsen om stykpris. Helenes sælgeridentitet og periode mangler; ingen individuelt eller årsafgrænset resultat kan leveres. Brugeren bekræftede ikke cocktailfilter, genindlæsning eller andre filtre. |
+| Yderligere mål (FR-10) | Gennemsnitlig `Days Rented` pr. række findes i API/frontend og som Tableau-WDC-tabel. | 5,379 verificeret mod regnearket og brugerbekræftet i Tableau-hoteloversigten. | Kilden dokumenterer ikke, at værdien betyder nætter eller hvilken kalenderperiode den dækker. |
+| Belægning (FR-03, US-06, BR-01/05) | Ikke implementeret. | Ingen belægningsberegning er udført. | Åben. Hotelarket mangler datoer og værelses-ID. Der mangler kapacitet pr. værelse/type, tilgængelighed, formel, periodegrænser samt regler for aflysninger, overlap og delperioder. POC'ens bookingdatoer alene giver ikke dette grundlag. |
+| Årlig hotelomsætning (FR-05, US-09, BR-04) | Ikke implementeret; førsteversions-totalen afgrænses ikke til år. | Ingen årsberegning er udført. | Åben. De importerede hotelrækker har ingen dato eller kalenderår. Afvent daterede data og aftale om indregningsdato/rapporteringsår. |
+| Helenes salg (FR-07, US-10, FR-09/US-12 for hendes kategoriandel) | Ikke implementeret; generiske bar-endpoints tilskriver ikke salg til en sælger. | Ingen sælgerbaseret beregning er udført. | Åben. Drinkarket har ingen sælger, transaktion eller salgsdato. Afvent daterede transaktionsdata og dokumenteret identitets-/attributionsregel. |
+| Tableau-dashboard og uge 2 API-forbindelse (FR-11, US-13, NFR-06; Plan trin 7) | Eksisterende WDC 2.3 udvidet; booking-API-tabellen bevares, analysetabellerne henter uge 2 API-beregninger. Samlet mål er separate enkeltrækkers tabeller. | Alle 10 `getData`-varianter bestod teknisk test mod faktiske JSON-svar. **Brugerbekræftet i `Hotel-Kong-Arthur-uge2-API`:** hoteloversigt viste 1.000, 11.234.034 kr. og gennemsnit 5,379; baroversigt viste 30 produkter, 179.958 enheder og 13.448.640,34 kr.; hotelbeløb pr. land og værelsestype/sæson vises korrekt. Manuel Refresh lykkedes for hoteloversigt, baroversigt og landefordeling. | Delvist opfyldt/testet. De øvrige analysetabeller er ikke færdigtestet; U2-T8 er ikke færdig. Automatisk opdatering og Tableau-version skal fortsat afklares med lærerne. |
+| Analyse-API, REST/JSON, OpenAPI/Swagger, 3 lag (FR-12/14, NFR-01/02) | Ja: routes → services → repositories; SQL i repositories; beregningsregler/filtervalidering i services; JSON og OpenAPI. | Alle ni endpoint-paths blev kaldt (top-endpointet med begge `groupBy`-værdier), ugyldige filtre gav 400, gyldigt filter uden match gav nul/tomt resultat, Swagger UI gav 200; resultater sammenholdt med XLSX. | Førsteversions-API opfyldt. Endpoints for åbne datakrav er bevidst ikke lavet. |
+| Frontendens analysevisning (FR-11/15) | Ja: analysefane, KPI-kort, tabeller, filtre, Opdatér, status-, fejl- og tomtilstand; relative `/api/analysis/`-kald. | **HTTP/API:** filer 200, alle analysekald 200, ingen hardkodede analysebeløb; API-test af booking CRUD bestået. **Brugerbekræftet i browser:** totals i oversigten, Brazil/China/all-country-filter, Coffee-filter/barbeløb/produkttyper, uændrede hoteltal ved Coffee-filter samt booking create/edit/delete. | Delvist browserverificeret. Andre filtre, fejl-/tomvisninger i browser og Opdatér/genindlæsning må ikke antages verificeret. |
+| PostgreSQL, isoleret Compose, gammel POC (uge 2-tillæg, NFR-03/04) | Ja: `compose.uge2.yaml`, project `hka-uge2`, volumen `postgres_data`; `.env.example`; gammel MySQL-POC adskilt. | Uge 2-tjenester blev startet/health-checked; PostgreSQL persistens verificeret; gamle POC-containere fortsatte med at køre. Import/API-tests brugte uge 2 PostgreSQL. | Opfyldt for den testede lokale stack. Ingen MySQL-data er migreret. Gentest fra helt frisk kopi anbefales fortsat. |
+| Reproducerbar opstart, dataimport og arkitekturdokumentation (FR-13/AC-15, NFR-05; README) | README dokumenterer `.env`, `docker compose --env-file .env -f compose.uge2.yaml up --build -d`, statuskontrol og `python3 scripts/import_datasets.py`. Skema oprettes fra `postgres/init.sql`; import kan gentages uden dubletter. | Importens rækker/summer og gentagelse testet. Compose er kørt lokalt. | Dokumenteret reproducerbar totrinsproces: start tjenester, kør import. En frisk database starter uden de historiske analyseposter indtil importkommandoen køres; importen er ikke automatisk koblet på Compose. Mermaid-diagram findes og opdateres til aktuel trelagsarkitektur. En frisk maskine er ikke testet i denne converge. |
+
+## Beregninger og datagrundlag
+
+- Hotel: 1.000 importerede rækker; `SUM(Price) = 11.234.034,00 kr.`; hver række er ét registreret ophold. `Price` som samlet pris pr. ophold er en POC-antagelse.
+- Bar: 30 produkter; `SUM(Units Sold) = 179.958`; `SUM(Price × Units Sold) = 13.448.640,34 kr.`; `Price` som stykpris er en POC-antagelse.
+- Kilderne mangler datoer/rapporteringsår; drinkkilden mangler sælger/transaktionsdato; hotelkilden mangler bookingdatoer og værelses-ID. Der er ikke opfundet historiske værdier.
+
+## Dokumentationskontrol
+
+- README beskriver den separate uge 2-opstart med lokal `.env` og den præcise importkommando. Importen følger efter Compose-opstart og kører ikke automatisk.
+- README indeholder et Mermaid-arkitekturdiagram, der viser frontend/Nginx, routes, services, repositories, PostgreSQL/import og den bevarede gamle POC. Hoteloversigt, baroversigt, hotelbeløb pr. land og værelsestype/sæson er brugerbekræftet i Tableau; Refresh bestod for hoteloversigt, baroversigt og landefordeling. Øvrige analysetabeller kræver fortsat kontrol.
+- Historiske POC-resultater i `specs/Tasks` og `Feature/Implement.md` er ikke slettet eller ommærket til uge 2-resultater.
+
+## Næste arbejde
+
+1. Fortsæt U2-T8 i Tableau Desktop med de øvrige analysetabeller; afklar automatisk opdatering med lærerne.
+2. Skaff de manglende datakilder/regler for belægning, årlige beløb og Helene; indtil da holdes beregningerne åbne.
+3. Gennemfør de resterende browserkontroller: andre filtre og Opdatér/genindlæsning. Gentest derefter opstart/import fra en frisk kopi.
+
+U2-T8-koden er implementeret og teknisk kontrolleret. Hoteloversigt, baroversigt, hotelbeløb pr. land og værelsestype/sæson er brugerbekræftet; manuel Refresh lykkedes for hoteloversigt, baroversigt og landefordeling. De øvrige analysetabeller er ikke færdigtestet, så U2-T8 er ikke færdig. Der er ikke uploadet noget til GitHub.

@@ -1,0 +1,25 @@
+# Constitution: Hotel Kong Arthur – uge 2
+
+## Formål
+
+Videreudvikl booking-POC'en til en prototype, der bevarer eksisterende booking-CRUD og leverer hotel- og barberegninger gennem et REST API til frontend og Tableau.
+
+## Principper
+
+1. **Bevar fungerende POC-adfærd.** Bookingernes opret, vis, ret og slet skal fortsat være tilgængeligt. Tidligere testresultater i `specs/Tasks` og `Feature/Implement.md` er historik og må ikke omskrives til uge 2-resultater.
+2. **PostgreSQL er databasestandarden for uge 2.** Tillægsopgaven erstatter MySQL-kravet. Den eksisterende POC og dens MySQL-data/volumen skal bevares urørt.
+3. **Hold tre lag adskilt.** Routes håndterer HTTP og JSON, services indeholder validering og beregningsregler, og repositories ejer databaseforespørgsler. Routes må ikke indeholde SQL, og services må ikke kalde database-driveren direkte.
+4. **Brug én dokumenteret API-kontrakt.** REST-endpoints udveksler JSON, beskrives i OpenAPI og vises gennem Swagger UI.
+5. **Frontend henter beregninger fra API'et.** Beregninger og forretningsregler skal udføres i backendens services; frontend præsenterer API-resultaterne.
+6. **Kildebelæg for tal.** Historiske resultater må kun beregnes fra tilgængelige data. Manglende felter og uafklarede formler markeres eksplicit; historiske data eller forretningsbeslutninger må ikke opfindes.
+7. **Dokumentér beslutninger før implementering.** Beregningsdefinitioner, datakrav, manglende data og acceptkriterier skal afklares i Specify og Clarify før relevante kodeændringer.
+8. **Isolér uge 2-drift.** Compose-projektnavn og PostgreSQL-volumen skal adskilles fra den gamle POC, så dens data bevares. Den separate opstart dokumenteres før kodeændringer.
+9. **Gør opstart gentagelig.** Hele systemet skal kunne startes med en Docker Compose-kommando, som dokumenteres separat fra POC-opstarten.
+
+## Arbejdsgang
+
+Arbejdet følger rækkefølgen `Constitution → Specify → Clarify → Plan → Tasks`. Systemændringer skrives først ind som krav; derefter fastlægges beregningsregler og implementeringstrin. En task markeres først færdig, når dens afgrænsede acceptkriterier er implementeret og kontrolleret; uafklarede krav i andre tasks holder ikke en selvstændig, verificeret task åben.
+
+## Kvalitet og færdiggørelse
+
+Arbejdet er først færdigt, når acceptkriterierne er kontrolleret, beregningsresultater kan spores til kildedata, API-dokumentationen svarer til implementeringen, og gruppen kan forklare arkitekturen og begrænsningerne. Converge skal skelne mellem implementering, teknisk test, brugerbekræftelse og mangler.

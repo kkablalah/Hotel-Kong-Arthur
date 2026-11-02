@@ -1,30 +1,49 @@
-# Plan: Booking-POC
+# Plan: Hotel Kong Arthur – uge 2
 
 ## Mål
 
-Levere en lille browserbaseret POC, hvor receptionist kan oprette, se, rette og slette bookinger, og hvor ændringer gemmes i MySQL og overlever genstart.
+Udvid booking-POC'en med PostgreSQL, API-baserede hotel- og barberegninger og en frontend, der viser resultaterne. Bevar booking-CRUD, REST/JSON, OpenAPI/Swagger UI, Docker Compose og trelagsarkitekturen.
 
-## Teknologistak og arkitektur
+## Arkitektur
 
-- Genbrug frontendens eksisterende HTML, CSS og JavaScript i `frontend/index.html` samt Nginx-containeren.
-- Genbrug backendens Node.js/Express-kode og JavaScript-moduler.
-- Bevar 3-lagsarkitekturen: REST-ruter som præsentationslag, bookingtjeneste som forretningslogiklag og MySQL/pool som datalag.
-- API'et bruger REST og JSON. Browseren kalder `/api/bookings`; Nginx videresender `/api/` til backend-servicen i Compose-netværket.
-- MySQL initialiseres med det eksisterende bookingskema og eksempeldata. En navngiven Docker-volumen gemmer databasefilerne ved container-genstart.
-- Swagger UI viser den eksisterende OpenAPI-kontrakt på backendens `/api-docs`.
+```text
+Frontend ──HTTP/JSON──> Routes ──> Services ──> Repositories ──> PostgreSQL
+                             OpenAPI/Swagger UI beskriver REST-kontrakten
+```
 
-## Køreoplevelse
+- **Routes:** HTTP-parametre, input/output og statuskoder; ingen SQL-forespørgsler.
+- **Services:** validering, forretningsregler og analyseberegninger; ingen direkte databaseadgang.
+- **Repositories:** PostgreSQL-forespørgsler og lagring.
+- **Frontend:** bruger API'ets booking- og analyseresultater; beregner ikke forretningsmål.
 
-Fra projektroden skal `docker compose -f compose.yaml up --build -d` starte MySQL, backend og frontend. Frontendens adresse er `http://localhost:8080`, og Swagger UI findes på `http://localhost:8080/api-docs/`.
+## Data og beregninger
+
+`specs/Clarify` er den autoritative oversigt over hver beregning, nødvendige felter, mangler og åbne regler. Første analyseversion bruger de besluttede POC-regler: hotelbeløb er `SUM(Price)` (forventet 11.234.034 kr.) og grupperes efter `Country`, `Room Type` og kildens `Season`; hver hotelrække er ét registreret ophold; drinkomsætning pr. produkt er `Price × Units Sold`; kategoriandele regnes efter `Units Sold`; ekstra nøgletal er gennemsnitlig `Days Rented` pr. registreret ophold. Prisfortolkningerne er eksplicitte POC-antagelser.
+
+Åbne krav om kalenderår, Helenes sælgerattribution og belægning afhænger af oplysninger, som ikke findes i de undersøgte ark. De skal forblive åbne i særskilte tasks og må ikke blokere PostgreSQL-grundlag, repositories, råimport eller de allerede afklarede førsteversionsberegninger. Årsomsætning, Helenes salg og belægning må ikke få opdigtede datoer eller sælgere.
+
+## Import af kildedata
+
+Importér hotel- og drinkarkets værdier, som de står i kilden; behold rå kolonneværdier og oprindelig rækkeidentitet. Registrér kildefil, ark og rækkenummer som importproveniens, så genkørsel af samme kilde opdaterer/ignorerer samme kilderække frem for at indsætte den igen. Brug ikke ensartede værdier i forskellige kilderækker som grund til at fjerne rækker. Afledte beregninger som `Price × Units Sold` hører til service-/analyseflowet og må ikke overskrive importerede kildeværdier. Importen skal kunne gentages uden dubletter.
+
+## Isoleret Compose-drift
+
+Uge 2 bruger Compose project name `hka-uge2` og PostgreSQL-volume-nøglen `postgres_data`, der med standard Compose-prefix bliver `hka-uge2_postgres_data`. Dette er implementeret i `compose.uge2.yaml`. Uge 2-opstart må ikke genbruge, omdøbe, slette eller migrere den gamle POC's MySQL-volume. MySQL-POC'en forbliver urørt og tilgængelig til præsentation. Ingen migrering af eksisterende data er besluttet.
 
 ## Arbejdsrækkefølge
 
-1. Gør Compose, databaseinitialisering og persistens klar.
-2. Få backendens CRUD og validering til at følge Clarify-beslutningerne.
-3. Forbind Nginx og browserens eksisterende CRUD-brugerflade til backend.
-4. Synkronisér OpenAPI/Swagger og dokumentér kørsel.
-5. Gennemfør Converge-kontrollen mod acceptkriterierne.
+1. Opret uge 2's isolerede PostgreSQL Compose-drift uden at berøre POC-volumen.
+2. Fastlæg PostgreSQL-datamodel og repositories for bookings og kildedata.
+3. Implementér gentagelig import af kildedata med rækkeproveniens og uden dubletter.
+4. Flyt bookingadgang til repositories og bevar booking-CRUD.
+5. Implementér førsteversionsberegninger og API-endpoints, som Clarify allerede har defineret; dokumentér kontrakten i OpenAPI.
+6. Tilføj frontendvisning, der henter de beregnede resultater fra API'et.
+7. Forbind Tableau-visninger til samme API-definitioner via den eksisterende WDC 2.3-teknik; dokumentér manuel Refresh, og afklar automatisk opdatering med lærerne.
+8. Afklar og implementér årsbetinget omsætning, Helenes salg og belægning først når de nødvendige kildedata/regler foreligger; disse opgaver kan fortsætte separat fra import og første version.
+9. Verificér beregninger mod kildeposter, booking-CRUD, API-kontrakt, UI og databevaring; opdatér status i Tasks.
 
-## Afgrænsning
+Krav om datoer, år og sælger blokerer kun de beregninger, der behøver dem. De blokerer ikke PostgreSQL, repository-laget, importen eller de afklarede førsteversionsberegninger. API-design for de åbne beregninger fastlægges først, når felter og outputdefinitioner er kendt.
 
-Ingen Tableau, hotelanalyse, baranalyse, gæstelogin, betaling eller integrationsarbejde indgår i denne POC.
+## Afgrænsning og status
+
+Booking-POC'ens dokumenterede funktioner bevares. Uge 2-implementeringen omfatter PostgreSQL, import, API, analysefane og en udvidet WDC-connector. Brugeren har bekræftet korrekt Tableau-visning af hoteloversigt, baroversigt, hotelbeløb pr. land og værelsestype/sæson samt manuel Refresh af hoteloversigt, baroversigt og landefordeling. Øvrige analysetabeller mangler færdigtest. Kalenderårsdata, sælgerattribution og belægningsdata/-regler er åbne. Ekstra nøgletal for første version er gennemsnitlig `Days Rented`. Udførte implementeringer og deres respektive teststatus fremgår af `specs/Tasks` og `specs/Converge`; brugerens browserbekræftelse gælder kun de dér opregnede interaktioner.
