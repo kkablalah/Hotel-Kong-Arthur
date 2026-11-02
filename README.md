@@ -334,15 +334,18 @@ Verificeret 2. november 2026 efter frontend-genbygning: analyseside, HTML,
 JavaScript og CSS blev hentet via HTTP med status 200; frontendkoden bruger
 relative API-kald og indeholder ingen hardkodede analysebeløb. Alle 10 analyse-
 API-kald returnerede 200. Booking-CRUD blev særskilt API-testet (POST 201,
-GET 200, PUT 200, DELETE 204), og testbookingen blev slettet. Safari blev
-åbnet på analysesiden. Efterfølgende browserkontroller er bekræftet af brugeren:
-analyseoversigtens totaler, filtre for Brazil og China, nulstilling til alle
-lande med 1.000 ophold og 11.234.034 kr., Coffee-filterets barbeløb/produktliste
-og uændrede hoteltal samt opret/redigér/slet af booking. Øvrige filtre og
-Opdatér/genindlæsning er ikke bekræftet. Den tidligere automatiserede visuelle
-kontrol blev ikke gennemført: skærmbilledetagning fejlede, og Safari DOM-
-inspektion krævede en indstilling, som ikke blev ændret. Brugerens browserkontrol
-er adskilt fra HTTP/API-resultaterne.
+GET 200, PUT 200, DELETE 204), og testbookingen blev slettet.
+
+**Dagens manuelle frontendtest (brugerbekræftet, Safari):** Med alle filtre
+vises hotelbeløb 11.234.034 kr., 1.000 ophold, gennemsnit 5,379 dage og
+baromsætning 13.448.640,34 kr. Filteret Suite + high viser 693.222 kr., 45
+ophold og 4,756 dage. Filteret Coffee viser baromsætning 6.343.884,91 kr.;
+hoteltallene forbliver uændrede. Nulstilling af filtre gendanner totalerne.
+Layoutrettelsen for beløb, kort og tabeller er kontrolleret i Safari og ifølge
+brugeren uploadet til GitHub. Disse konkrete visninger og handlinger er
+bekræftet; øvrige filterkombinationer, Opdatér-knappen og genindlæsning er
+fortsat ikke bekræftet. Manuelle observationer er brugerens, adskilt fra
+HTTP/API-resultaterne.
 
 ## Specifikationer og verifikation
 
@@ -372,7 +375,7 @@ bekræftede handlinger står særskilt fra de tekniske API-tests i Converge.
 - Skaff værelses-ID, bookingdatoer/status, kapacitet og tilgængelighedsregler; aftal belægningsformel og periode før implementering.
 - Afklar den faktiske forretningsbetydning af `Price`; den nuværende betydning som samlet opholdsbeløb/stykpris er alene en POC-antagelse.
 - Gentag uge 2-opstart og import fra en frisk kopi, og kontrollér `.env.example`/`.gitignore` samt Tableau-workbook på en anden gruppedeltagers computer.
-- Browserbekræft øvrige analysefiltre og Opdatér/genindlæsning. Kategoriandele og gennemsnitlig `Days Rented` er allerede teknisk kontrolleret mod kildedata; brugerens browserkontrol af disse visninger er ikke registreret.
+- Browserbekræft øvrige analysefilterkombinationer og Opdatér/genindlæsning. De konkrete kontroller for alle filtre, Suite + high, Coffee, nulstilling og layout i Safari er brugerbekræftet; kategoriandele er teknisk kontrolleret mod kildedata, men browserkontrol af kategorivisningen er ikke registreret.
 
 Se [CONTRIBUTE.md](CONTRIBUTE.md) for samarbejde. Gruppen skal kunne forklare
 og gennemgå både AI-genereret kode og de valgte beregninger.

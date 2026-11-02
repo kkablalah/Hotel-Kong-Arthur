@@ -674,7 +674,7 @@ td strong {
 
 .analysis-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   gap: 14px;
 }
 
@@ -691,13 +691,14 @@ td strong {
 }
 
 .metric-value {
-  overflow-wrap: anywhere;
   margin: 0 0 5px;
   color: var(--green);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(22px, 2.3vw, 30px);
+  font-size: clamp(18px, 2vw, 30px);
   letter-spacing: -0.035em;
   line-height: 1.16;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .metric-card > span {
@@ -767,6 +768,10 @@ td strong {
   font-variant-numeric: tabular-nums;
 }
 
+.analysis-table td:not(:first-child) {
+  white-space: nowrap;
+}
+
 .analysis-panel-wide {
   grid-column: 1 / -1;
 }
@@ -792,6 +797,7 @@ td strong {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 25px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .leader-row {
@@ -970,11 +976,30 @@ td strong {
   }
 
   .metric-card {
-    padding: 15px;
+    padding: 13px 11px;
   }
 
   .metric-value {
-    font-size: 22px;
+    font-size: clamp(16px, 4.5vw, 22px);
+  }
+
+  .metric-label {
+    font-size: 11px;
+  }
+
+  .analysis-table {
+    min-width: 480px;
+  }
+
+  .analysis-table th,
+  .analysis-table td {
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: 12px;
+  }
+
+  .analysis-panel-wide .analysis-table {
+    min-width: 650px;
   }
 
   .analysis-heading {
