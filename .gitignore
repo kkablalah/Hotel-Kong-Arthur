@@ -1,0 +1,7 @@
+# Lokale hemmeligheder og miljøfiler
+.env
+.env.*
+!.env.example
+
+# Installerede Node-afhængigheder
+node_modules/
