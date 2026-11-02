@@ -1,0 +1,729 @@
+openapi: 3.0.3
+info:
+  title: Hotel Kong Arthur API
+  version: 0.4.0
+  description: |
+    REST API til Hotel Kong Arthur dataanalyse-platform.
+
+    Fælles regler:
+    - Datoer er ISO 8601 (`YYYY-MM-DD`, OpenAPI-format `date`).
+    - Beløb er tekst i DKK med 2 decimaler, og procenter er tal med 1 decimal (BR-02).
+    - Alle fejl har samme format (`Error`) og indeholder aldrig stack traces.
+    - Historiske ophold (`stays`) og barsalg (`drinks`) har ingen datoer, men hører til året `HISTORIK_AAR`. Med en periode tæller kun bookinger.
+servers:
+  - url: http://localhost:8000
+    description: Backend i docker-compose
+tags:
+  - name: Drift
+  - name: Værelser
+  - name: Bookinger
+  - name: Nøgletal
+  - name: Cocktailbar
+paths:
+  /health:
+    get:
+      tags: [Drift]
+      summary: Healthcheck til Docker Compose
+      operationId: getHealth
+      responses:
+        '200':
+          description: Backenden kører
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/room-types:
+    get:
+      tags: [Værelser]
+      summary: Hent de 8 værelsestyper
+      operationId: listRoomTypes
+      responses:
+        '200':
+          description: Liste af værelsestyper
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/rooms:
+    get:
+      tags: [Værelser]
+      summary: Hent værelser, som kan bookes
+      operationId: listRooms
+      responses:
+        '200':
+          description: Liste af værelser
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/countries:
+    get:
+      tags: [Værelser]
+      summary: Hent de lande, en gæst kan komme fra
+      operationId: listCountries
+      responses:
+        '200':
+          description: Liste af lande
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Country'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/bookings:
+    get:
+      tags: [Bookinger]
+      summary: Hent bookinger
+      operationId: listBookings
+      parameters:
+        - name: room_id
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - $ref: '#/components/parameters/OptionalStartDate'
+        - $ref: '#/components/parameters/OptionalEndDate'
+      responses:
+        '200':
+          description: Liste af bookinger
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Bookinger]
+      summary: Opret en booking
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingInput'
+      responses:
+        '201':
+          description: Bookingen er oprettet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/bookings/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Bookinger]
+      summary: Hent én booking
+      operationId: getBooking
+      responses:
+        '200':
+          description: Bookingen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Bookinger]
+      summary: Ret en booking
+      operationId: updateBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingInput'
+      responses:
+        '200':
+          description: Den rettede booking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Bookinger]
+      summary: Slet en booking
+      operationId: deleteBooking
+      responses:
+        '204':
+          description: Bookingen er slettet
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/bookings/{id}/satisfaction:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      tags: [Bookinger]
+      summary: Giv en rating for en booking (BR-08)
+      operationId: addBookingRating
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RatingInput'
+      responses:
+        '201':
+          description: Ratingen er gemt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rating'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/metrics/occupancy:
+    get:
+      tags: [Nøgletal]
+      summary: Belægningsgrad i en periode (BR-01)
+      description: Bygger kun på bookinger, fordi historiske ophold ikke har datoer.
+      operationId: getOccupancy
+      parameters:
+        - $ref: '#/components/parameters/RequiredStartDate'
+        - $ref: '#/components/parameters/RequiredEndDate'
+      responses:
+        '200':
+          description: Belægningsgrad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Occupancy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/metrics/revenue:
+    get:
+      tags: [Nøgletal]
+      summary: Indtjening grupperet og sorteret faldende (BR-02, BR-03)
+      description: Uden periode tæller både historiske ophold og bookinger. Med periode tæller kun bookinger.
+      operationId: getRevenue
+      parameters:
+        - name: group_by
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [type, season, country, year, type_season]
+        - $ref: '#/components/parameters/OptionalStartDate'
+        - $ref: '#/components/parameters/OptionalEndDate'
+      responses:
+        '200':
+          description: Indtjening pr. gruppe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revenue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/metrics/revenue/annual:
+    get:
+      tags: [Nøgletal]
+      summary: Indtjening for et kalenderår (BR-04)
+      description: Historiske ophold tæller i `HISTORIK_AAR`, og bookinger tæller i det år, de tjekker ind. Uden `aar` bruges `HISTORIK_AAR`. 404, hvis året ikke har indtjening.
+      operationId: getAnnualRevenue
+      parameters:
+        - $ref: '#/components/parameters/Year'
+      responses:
+        '200':
+          description: Årets indtjening
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualRevenue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/metrics/revenue/running:
+    get:
+      tags: [Nøgletal]
+      summary: Løbende indtjening fra nye bookinger
+      description: Tæller kun bookinger, ikke historiske ophold, så en ny booking kan ses med det samme.
+      operationId: getRunningRevenue
+      responses:
+        '200':
+          description: Indtjening og antal bookinger
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunningRevenue'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/metrics/guests/countries:
+    get:
+      tags: [Nøgletal]
+      summary: Ophold og indtjening pr. land (FR-06)
+      description: Tæller ophold, ikke personer, fordi historiske ophold ikke har antal gæster.
+      operationId: getGuestsByCountry
+      parameters:
+        - $ref: '#/components/parameters/OptionalStartDate'
+        - $ref: '#/components/parameters/OptionalEndDate'
+      responses:
+        '200':
+          description: Lande sorteret efter antal ophold
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestsByCountry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/metrics/satisfaction:
+    get:
+      tags: [Nøgletal]
+      summary: Gennemsnitlig kundetilfredshed (BR-08)
+      description: Ratings tæller efter bookingens indtjekningsdato. `average_rating` er null, hvis perioden ikke har ratings.
+      operationId: getSatisfaction
+      parameters:
+        - $ref: '#/components/parameters/RequiredStartDate'
+        - $ref: '#/components/parameters/RequiredEndDate'
+      responses:
+        '200':
+          description: Gennemsnit og antal ratings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Satisfaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/metrics/revpar:
+    get:
+      tags: [Nøgletal]
+      summary: RevPAR og ADR i en periode (BR-09)
+      description: Bygger kun på bookinger. `adr_dkk` er null, hvis ingen værelsesnætter er belagt.
+      operationId: getRevpar
+      parameters:
+        - $ref: '#/components/parameters/RequiredStartDate'
+        - $ref: '#/components/parameters/RequiredEndDate'
+      responses:
+        '200':
+          description: RevPAR og ADR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revpar'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/cocktail/sales:
+    get:
+      tags: [Cocktailbar]
+      summary: Helene Christines samlede salg (FR-07)
+      description: Barsalget hører til `HISTORIK_AAR`. Uden `aar` bruges det år, og andre år giver 404.
+      operationId: getCocktailSales
+      parameters:
+        - $ref: '#/components/parameters/Year'
+      responses:
+        '200':
+          description: Samlet salg
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeleneSales'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/cocktail/sales/products:
+    get:
+      tags: [Cocktailbar]
+      summary: Omsætning pr. drink, sorteret faldende (FR-08)
+      operationId: getCocktailProducts
+      parameters:
+        - $ref: '#/components/parameters/Year'
+      responses:
+        '200':
+          description: Omsætning pr. drink
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DrinkSales'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/cocktail/sales/distribution:
+    get:
+      tags: [Cocktailbar]
+      summary: Fordeling mellem cocktails og kaffe (FR-09, BR-07)
+      description: Omsætningsandel er hovedtallet, og enhedsandel er supplement. Barsalget hører til `HISTORIK_AAR`, og andre år giver 404.
+      operationId: getCocktailDistribution
+      parameters:
+        - $ref: '#/components/parameters/Year'
+      responses:
+        '200':
+          description: Begge andele pr. kategori
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Distribution'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  parameters:
+    RequiredStartDate:
+      name: start_date
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    RequiredEndDate:
+      name: end_date
+      in: query
+      required: true
+      schema: { type: string, format: date }
+    OptionalStartDate:
+      name: start_date
+      in: query
+      schema: { type: string, format: date }
+    OptionalEndDate:
+      name: end_date
+      in: query
+      schema: { type: string, format: date }
+    Year:
+      name: aar
+      in: query
+      schema: { type: integer, minimum: 1000, maximum: 9999 }
+  responses:
+    BadRequest:
+      description: Ugyldigt input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Findes ikke
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Dobbeltbooking (BR-10)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Uventet fejl
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Amount:
+      type: string
+      pattern: '^\d+\.\d{2}$'
+      description: Beløb i DKK med 2 decimaler
+      example: '11234034.00'
+    Period:
+      type: object
+      required: [start_date, end_date]
+      additionalProperties: false
+      properties:
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+    OptionalPeriod:
+      type: object
+      nullable: true
+      description: Null betyder alle data, også historiske ophold uden datoer
+      required: [start_date, end_date]
+      additionalProperties: false
+      properties:
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+    Health:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    RoomType:
+      type: object
+      required: [room_type_id, name]
+      additionalProperties: false
+      properties:
+        room_type_id: { type: integer, minimum: 1, example: 1 }
+        name: { type: string, example: Grand Lit }
+    Room:
+      type: object
+      required: [room_id, room_number, capacity, room_type]
+      additionalProperties: false
+      properties:
+        room_id: { type: integer, minimum: 1 }
+        room_number: { type: integer, minimum: 0 }
+        capacity: { type: integer, minimum: 1, maximum: 4 }
+        room_type: { type: string }
+    Country:
+      type: object
+      required: [country_id, name]
+      additionalProperties: false
+      properties:
+        country_id: { type: integer, minimum: 1 }
+        name: { type: string }
+    BookingInput:
+      type: object
+      required: [room_id, first_name, family_name, guest_count, check_in_date, check_out_date, total_price]
+      additionalProperties: false
+      properties:
+        room_id: { type: integer, minimum: 1 }
+        first_name: { type: string, minLength: 1, maxLength: 60 }
+        family_name: { type: string, minLength: 1, maxLength: 60 }
+        country_id:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Tom betyder, at landet vises som "Ukendt"
+        guest_count: { type: integer, minimum: 1, maximum: 4 }
+        check_in_date: { type: string, format: date }
+        check_out_date: { type: string, format: date }
+        total_price:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+          description: Samlet pris i DKK inkl. skatter og gebyrer (BR-02)
+    Booking:
+      type: object
+      required: [booking_id, room_id, first_name, family_name, country_id, guest_count, check_in_date, check_out_date, total_price, created_at, updated_at]
+      additionalProperties: false
+      properties:
+        booking_id: { type: integer, minimum: 1 }
+        room_id: { type: integer, minimum: 1 }
+        first_name: { type: string }
+        family_name: { type: string }
+        country_id: { type: integer, nullable: true }
+        guest_count: { type: integer, minimum: 1, maximum: 4 }
+        check_in_date: { type: string, format: date }
+        check_out_date: { type: string, format: date }
+        total_price: { $ref: '#/components/schemas/Amount' }
+        created_at: { type: string, description: 'Tidspunkt, YYYY-MM-DD HH:MM:SS' }
+        updated_at: { type: string, description: 'Tidspunkt, YYYY-MM-DD HH:MM:SS' }
+    RatingInput:
+      type: object
+      required: [rating]
+      additionalProperties: false
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, nullable: true, maxLength: 500 }
+    Rating:
+      type: object
+      required: [satisfaction_id, booking_id, rating, comment, created_at]
+      additionalProperties: false
+      properties:
+        satisfaction_id: { type: integer, minimum: 1 }
+        booking_id: { type: integer, minimum: 1 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, nullable: true }
+        created_at: { type: string, description: 'Tidspunkt, YYYY-MM-DD HH:MM:SS' }
+    Occupancy:
+      type: object
+      required: [period, occupied_room_nights, available_room_nights, occupancy_pct]
+      additionalProperties: false
+      properties:
+        period: { $ref: '#/components/schemas/Period' }
+        occupied_room_nights: { type: integer, minimum: 0 }
+        available_room_nights: { type: integer, minimum: 1 }
+        occupancy_pct: { type: number }
+    Revenue:
+      type: object
+      required: [period, includes_history, group_by, total_dkk, rows]
+      additionalProperties: false
+      properties:
+        period: { $ref: '#/components/schemas/OptionalPeriod' }
+        includes_history: { type: boolean }
+        group_by: { type: string }
+        total_dkk: { $ref: '#/components/schemas/Amount' }
+        rows:
+          type: array
+          items:
+            type: object
+            required: [group, stays_count, revenue_dkk]
+            additionalProperties: false
+            properties:
+              group: { type: string }
+              room_type: { type: string }
+              season: { type: string }
+              stays_count: { type: integer, minimum: 0 }
+              revenue_dkk: { $ref: '#/components/schemas/Amount' }
+    AnnualRevenue:
+      type: object
+      required: [year, revenue_dkk, stays_count, bookings_count]
+      additionalProperties: false
+      properties:
+        year: { type: integer }
+        revenue_dkk: { $ref: '#/components/schemas/Amount' }
+        stays_count: { type: integer, minimum: 0 }
+        bookings_count: { type: integer, minimum: 0 }
+    RunningRevenue:
+      type: object
+      required: [revenue_dkk, bookings_count]
+      additionalProperties: false
+      properties:
+        revenue_dkk: { $ref: '#/components/schemas/Amount' }
+        bookings_count: { type: integer, minimum: 0 }
+    GuestsByCountry:
+      type: object
+      required: [period, includes_history, rows]
+      additionalProperties: false
+      properties:
+        period: { $ref: '#/components/schemas/OptionalPeriod' }
+        includes_history: { type: boolean }
+        rows:
+          type: array
+          items:
+            type: object
+            required: [country, stays_count, revenue_dkk]
+            additionalProperties: false
+            properties:
+              country: { type: string }
+              stays_count: { type: integer, minimum: 0 }
+              revenue_dkk: { $ref: '#/components/schemas/Amount' }
+    Satisfaction:
+      type: object
+      required: [period, rating_count, average_rating]
+      additionalProperties: false
+      properties:
+        period: { $ref: '#/components/schemas/Period' }
+        rating_count: { type: integer, minimum: 0 }
+        average_rating: { type: number, nullable: true }
+    Revpar:
+      type: object
+      required: [period, revenue_dkk, available_room_nights, occupied_room_nights, revpar_dkk, adr_dkk]
+      additionalProperties: false
+      properties:
+        period: { $ref: '#/components/schemas/Period' }
+        revenue_dkk: { $ref: '#/components/schemas/Amount' }
+        available_room_nights: { type: integer, minimum: 1 }
+        occupied_room_nights: { type: integer, minimum: 0 }
+        revpar_dkk: { $ref: '#/components/schemas/Amount' }
+        adr_dkk:
+          type: string
+          nullable: true
+          pattern: '^\d+\.\d{2}$'
+    HeleneSales:
+      type: object
+      required: [employee, year, total_dkk, units_sold]
+      additionalProperties: false
+      properties:
+        employee: { type: string }
+        year: { type: integer }
+        total_dkk: { $ref: '#/components/schemas/Amount' }
+        units_sold: { type: integer, minimum: 0 }
+    DrinkSales:
+      type: object
+      required: [drink, category, price_dkk, units_sold, revenue_dkk]
+      additionalProperties: false
+      properties:
+        drink: { type: string }
+        category: { type: string }
+        price_dkk: { $ref: '#/components/schemas/Amount' }
+        units_sold: { type: integer, minimum: 0 }
+        revenue_dkk: { $ref: '#/components/schemas/Amount' }
+    Distribution:
+      type: object
+      required: [employee, year, rows]
+      additionalProperties: false
+      properties:
+        employee: { type: string }
+        year: { type: integer }
+        rows:
+          type: array
+          items:
+            type: object
+            required: [category, revenue_dkk, revenue_share_pct, units_sold, unit_share_pct]
+            additionalProperties: false
+            properties:
+              category: { type: string }
+              revenue_dkk: { $ref: '#/components/schemas/Amount' }
+              revenue_share_pct: { type: number }
+              units_sold: { type: integer, minimum: 0 }
+              unit_share_pct: { type: number }
+    Error:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              description: Fast fejlkode
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              description: Læsbar tekst
+              example: Ugyldigt input
+            details:
+              description: Eventuelle detaljer pr. felt
+              type: array
+              items:
+                type: object

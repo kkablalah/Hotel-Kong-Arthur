@@ -1,0 +1,88 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Via 127.0.0.1, fordi MySQL først lytter på TCP, når db/-filerne er indlæst.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      # Første opstart kan tage flere minutter, fordi databasen oprettes og db/-filerne indlæses.
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 300s
+    networks:
+      - hk-network
+
+  backend:
+    build: ./backend
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      HISTORIK_AAR: ${HISTORIK_AAR:-2025}
+    volumes:
+      - ./openapi:/app/openapi:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - hk-network
+
+  frontend:
+    image: nginx:alpine
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "3000:80"
+    networks:
+      - hk-network
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    environment:
+      SWAGGER_JSON: /openapi/openapi.yaml
+    volumes:
+      - ./openapi:/openapi:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - hk-network
+
+  tableau-export:
+    build: ./tableau
+    environment:
+      API_BASE_URL: ${API_BASE_URL}
+      EXPORT_INTERVAL_SECONDS: ${EXPORT_INTERVAL_SECONDS}
+      EXTRACT_OUTPUT_PATH: /extracts/tableau_data.hyper
+    volumes:
+      - ./extracts:/extracts
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - hk-network
+
+networks:
+  hk-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

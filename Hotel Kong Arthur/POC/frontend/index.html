@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hotel Kong Arthur</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Hotel Kong Arthur</h1>
+    <p>Bookinger</p>
+  </header>
+
+  <main>
+    <p id="message" role="status" hidden></p>
+
+    <section>
+      <h2 id="form-title">Opret booking</h2>
+      <p id="no-rooms" class="notice" hidden>Der er ingen værelser i systemet endnu, så der kan ikke oprettes bookinger.</p>
+      <form id="booking-form">
+        <label>Værelse <select id="room_id" required></select></label>
+        <label>Fornavn <input id="first_name" maxlength="60" required></label>
+        <label>Efternavn <input id="family_name" maxlength="60" required></label>
+        <label>Land <select id="country_id"></select></label>
+        <label>Antal gæster <input id="guest_count" type="number" min="1" max="4" required></label>
+        <label>Indtjekning <input id="check_in_date" type="date" required></label>
+        <label>Udtjekning <input id="check_out_date" type="date" required></label>
+        <label>Samlet pris (DKK) <input id="total_price" type="number" min="0.01" step="0.01" required></label>
+        <div class="buttons">
+          <button type="submit" id="submit-button">Opret booking</button>
+          <button type="button" id="cancel-button" class="secondary" hidden>Fortryd</button>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Bookinger</h2>
+      <p id="running"></p>
+      <p id="satisfaction"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nr.</th><th>Værelse</th><th>Gæst</th><th>Gæster</th>
+              <th>Indtjekning</th><th>Udtjekning</th><th>Pris (DKK)</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="bookings"></tbody>
+        </table>
+      </div>
+      <p id="no-bookings" class="notice" hidden>Der er ingen bookinger endnu.</p>
+    </section>
+
+    <section id="rating-section" hidden>
+      <h2 id="rating-title">Giv rating</h2>
+      <form id="rating-form">
+        <label>Rating
+          <select id="rating" required>
+            <option value="5">5 (bedst)</option>
+            <option value="4">4</option>
+            <option value="3">3</option>
+            <option value="2">2</option>
+            <option value="1">1 (dårligst)</option>
+          </select>
+        </label>
+        <label>Kommentar <input id="comment" maxlength="500"></label>
+        <div class="buttons">
+          <button type="submit">Gem rating</button>
+          <button type="button" id="rating-cancel" class="secondary">Fortryd</button>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Værelsestyper</h2>
+      <ul id="room-types"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

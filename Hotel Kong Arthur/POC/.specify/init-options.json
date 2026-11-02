@@ -1,0 +1,10 @@
+{
+  "ai": "vibe",
+  "ai_skills": true,
+  "allow_symlinks": false,
+  "feature_numbering": "sequential",
+  "here": false,
+  "integration": "vibe",
+  "script": "ps",
+  "speckit_version": "1.2.3"
+}

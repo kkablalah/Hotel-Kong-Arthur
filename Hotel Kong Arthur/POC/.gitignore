@@ -1,0 +1,17 @@
+# Hemmeligheder (constitution princip VI). .env.example skal med i git.
+.env
+
+# Node
+node_modules/
+*.log
+
+# Data, der dannes under kørsel
+extracts/*.hyper
+extracts/*.tmp
+mysql_data/
+
+# Editor og styresystem
+.vs/
+.vscode/
+Thumbs.db
+.DS_Store
