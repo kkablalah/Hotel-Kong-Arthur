@@ -1,9 +1,15 @@
 <!--
 Sync Impact Report (Fjern før commit):
-- Version change: (ny) → 1.0.0
-- Added sections: Core Principles (9), Development Principles, Project Structure, Definition of Done
+- Version change: 1.1.0 → 2.0.0 (MAJOR: MySQL-kravet er fjernet, og princip IV er omdefineret)
+- Modified principles: IV. Database (MySQL erstattet af krav om en anden databasetype og isolering af databasen)
+- Added principles: X. Nøgletal og dataanalyse via API
+- Consequential edit: "Lodrette Dele" siger nu "database" i stedet for "MySQL"
 - Removed sections: Ingen
-- Follow-up TODOs: Ingen
+- Unchanged: Alle øvrige principper og afsnit
+- Follow-up TODOs:
+  - Hele gruppen skal godkende ændringen (Governance)
+  - Vælg og begrund databasen i plan.md
+  - spec.md, plan.md og tasks.md er i konflikt med IV og X og er ikke rettet endnu
 -->
 
 # Hotel Kong Arthur dataanalyse-platform Constitution
@@ -20,7 +26,9 @@ Præsentationslaget skal leverer et REST API med JSON. Ressourcer skal navngives
 API'et skal beskrives i en OpenAPI-specifikation. Swagger UI skal være tilgængelig og køre i en Docker-container. OpenAPI-specifikationen og implementeringen skal altid stemme overens. Enhver API-ændring skal opdatere kontrakten i samme commit.
 
 ### IV. Database
-Systemet skal bruge MySQL. Schema og startdata skal ligge i `db/` og indlæses automatisk ved første opstart.
+Systemet skal bruge en anden databasetype end MySQL. Det konkrete valg og begrundelsen skal fastlægges i `plan.md`. Schema og startdata skal ligge i `db/` og indlæses automatisk ved første opstart.
+
+I applikationskoden må kun dataadgangslaget (`backend/src/data`) og `db/`-mappen kende til databasen. Et skift af database må ikke kræve ændringer i præsentationslaget eller forretningslogiklaget. Uden for applikationskoden må `docker-compose.yml` og `.env`-filerne definere databasens container og forbindelse (princip V og VI), og tests og kontrolscripts må køre kontrolberegninger direkte mod databasen ("Kvalitet og Test").
 
 ### V. Docker
 Alt skal køre i Docker-containere og startes med én kommando: `docker-compose up`. Databasen skal være sund, før backenden starter. Data skal bevares mellem genstarter via volumes.
@@ -39,13 +47,16 @@ Der skal være et interaktivt Tableau-dashboard, der viser nøgletallene. Dashbo
 
 **Begrundet undtagelse (godkendt af gruppen 2026-10-29):** Tableau-eksportscriptet i `tableau/` må anvende Python med Tableau Hyper API. Hyper API findes ikke til Node.js/JavaScript, og alternativerne (Java/C++) er sværere for gruppen. Scriptet er et eksternt værktøj i egen Docker-container og ikke en del af backenden: det må kun hente data fra backendens REST API og skrive `.hyper`-filen — ingen forretningslogik eller databaseadgang i scriptet.
 
+### X. Nøgletal og dataanalyse via API
+Alle nøgletal og dataanalyser skal beregnes i backenden og stilles til rådighed som REST/JSON-endpoints, der er beskrevet i OpenAPI-kontrakten. Frontenden skal hente og vise dem fra REST API'et. Frontenden må hverken beregne dem selv eller tale direkte med databasen. Tableau-dashboardet (princip VIII) forbliver en ekstra visning, der får data via REST API'et og `.hyper`-scriptet (princip IX), og det erstatter ikke visningen i frontenden.
+
 ## Development Principles
 
 ### Spec-drevet Udvikling
 Specifikationen skal skrives før koden. Ændrede krav skal opdateres i specifikationen først. Teamet skal følge arbejdsprocessen: Constitution → Specify → Clarify → Plan → Tasks → Implement → Converge.
 
 ### Lodrette Dele
-Teamet skal først bygge et minimalt skelet, der virker hele vejen (docker-compose, backend, MySQL og ét endpoint). Derefter udvides systemet ét user story ad gangen. Én task implementeres ad gangen.
+Teamet skal først bygge et minimalt skelet, der virker hele vejen (docker-compose, backend, database og ét endpoint). Derefter udvides systemet ét user story ad gangen. Én task implementeres ad gangen.
 
 ### User Stories
 User stories skal skrives som "Som <rolle> ønsker jeg <mål>, så <formål>". User stories skal følge INVEST-principperne (Uafhængig, Forhandlbar, Værdifuld, Estimérbar, Tilstrækkelig, Testbar). User stories skal have acceptkriterier, der afgør, om en story er færdig.
@@ -93,4 +104,4 @@ En opgave er færdig, når:
 
 Forfatningen gælder for hele projektet og supersederer alle andre dokumenter og praksisser. Ændringer til forfatningen skal dokumenteres, godkendes af hele gruppen og noteres med en klar begrundelse. Alle gruppemedlemmer skal kunne forklare og stå inde for forfatningens principper. Ved konflikter mellem forfatningen og andre dokumenter, gælder forfatningen.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-26 | **Last Amended**: 2026-10-29 (princip IX: begrundet undtagelse for eksternt Python-baseret Tableau-eksportscript)
+**Version**: 2.0.0 | **Ratified**: 2026-10-26 | **Last Amended**: 2026-11-02 (hotellets tillægsopgave uge 2: princip IV kræver en anden database end MySQL og isolerer databasen i data-laget og `db/`; nyt princip X om nøgletal via API og visning i frontenden)
