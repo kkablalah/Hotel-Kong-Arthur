@@ -20,6 +20,11 @@
 - Q: Hvilket commit skal tagget `v1-mysql` pege på? → A: `ba5bd83` (FR-013).
 - Q: Hvad dækker "uden tab af data"? → A: Kun de leverede startdata i `db/`. Bookinger og ratings fra version 1 flyttes ikke (FR-014).
 - Q: Er grænserne under Assumptions godkendt? → A: Ja: højeste id 2147483647, højeste pris 9999999999,99 DKK, første opstart højst 5 minutter, og frontenden viser tallene inden for 5 sekunder.
+- Q: Tæller PostgreSQL 18 som en anden databasetype end MySQL? → A: Gruppen har valgt PostgreSQL 18 og regner den som en anden databasetype. Underviserens bekræftelse afventer (FR-012).
+- Q: Skal der være et valgfrit, tydeligt mærket demo-datasæt, så hotelledelsen kan se belægningsgrad, RevPAR, ADR og kundetilfredshed med rigtige værdier i en demo? → A: Ja. Det indlæses kun med en bestemt kommando, kan fjernes igen, består af mærkede bookinger og ratings i indeværende år og oprettes gennem REST API'et. Frontenden viser "Indeholder demodata", så længe det er indlæst (FR-026 til FR-028).
+- Q: Hvilken rækkefølge skal API'et bruge, når to rækker har nøjagtig samme sorteringsværdi? → A: Stigende efter navn (land, gruppe, drik eller kategori), uafhængigt af databasens sprogindstilling. I sammenligningen sorteres de lige rækker i svarene fra `v1-mysql` efter samme regel, og det er en tilladt ændring (FR-029).
+- Q: Hvad skal frontenden vise, når et nøgletal mangler data? → A: "Ingen data", når et tal er tomt, når API'et svarer 404, når en liste er tom, og for belægningsgrad, RevPAR og ADR, når `occupied_room_nights` er 0. API-fejl vises som "Kunne ikke hente tallet" (FR-008).
+- Q: Hvornår skal nøgletallene i frontenden hentes igen fra API'et? → A: Ved åbning og genindlæsning, ved et nyt valg i en dropdown og ved tryk på "Opdater", som bevarer de valgte dropdowns. Der er ingen automatisk opdatering (FR-010).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -53,7 +58,7 @@ Som hotellets IT ønsker jeg, at databasen udskiftes med en anden databasetype e
 **Acceptance Scenarios**:
 
 1. **Givet** et system fra ren opstart, **når** kontrolberegningerne køres mod den nye database, **så** er resultatet 1000 ophold, 5379 nætter, 11234034,00 DKK i værelsesindtjening og 13448640,34 DKK i baromsætning.
-2. **Givet** referencesættet, **når** svarene fra det nye system sammenlignes med svarene fra version 1, **så** er statuskoder, feltnavne, datatyper, værdier og rækkefølge identiske, bortset fra tidspunkterne `created_at` og `updated_at`.
+2. **Givet** referencesættet, **når** svarene fra det nye system sammenlignes med svarene fra version 1, **så** er statuskoder, feltnavne, datatyper, værdier og rækkefølge identiske, bortset fra tidspunkterne `created_at` og `updated_at`. Rækker med samme sorteringsværdi sammenlignes efter reglen i FR-029.
 3. **Givet** gæstenavne med særlige tegn, fx Müller, **når** de læses fra den nye database, **så** er de tegn for tegn de samme som i de leverede data.
 4. **Givet** en booking, der overlapper en anden, for mange gæster eller et id, der ikke findes, **når** kaldet foretages, **så** er svaret det samme som i version 1 (409, 400 eller 404).
 5. **Givet** en oprettet booking, **når** systemet genstartes uden at slette data, **så** findes bookingen stadig.
@@ -73,15 +78,17 @@ Som hotelledelse ønsker jeg at se nøgletallene i frontenden, så jeg kan følg
 **Acceptance Scenarios**:
 
 1. **Givet** et system fra ren opstart, **når** hotelledelsen åbner nøgletalsvisningen, **så** vises alle 13 beregninger med årsvalget "Standard", årets indtjening er 11234034,00 DKK for 2025, Helene Christines salg er 13448640,34 DKK, og hvert tal viser, hvad det er, og hvilken periode det gælder.
-2. **Givet** den åbne visning, **når** tallene sammenlignes med API'ets svar, **så** er de ens. Kun visningen af tallet må være anderledes, fx dansk tusindtalsseparator.
+2. **Givet** den åbne visning, **når** tallene sammenlignes med API'ets svar, **så** er de ens. Kun visningen af tallet må være anderledes, fx dansk tusindtalsseparator, og "Ingen data" efter reglen i FR-008.
 3. **Givet** den åbne visning, **når** netværksloggen læses, **så** kalder browseren kun REST API'et ud over frontendens egne filer.
-4. **Givet** en periode uden bookinger eller ratings, **når** visningen åbnes, **så** står der, at der ikke er data, og et tomt tal vises ikke som 0.
+4. **Givet** en periode uden bookinger eller ratings, **når** visningen åbnes, **så** står der "Ingen data" ved belægningsgrad, RevPAR, ADR og kundetilfredshed, og ingen af dem vises som 0.
 5. **Givet** belægningsgrad, RevPAR og ADR, **når** de vises, **så** står der, at de kun bygger på nye bookinger, fordi historiske ophold ikke har datoer.
-6. **Givet** en ny, rettet eller slettet booking eller en ny rating, **når** visningen opdateres, **så** indgår ændringen i tallene.
-7. **Givet** at API'et ikke svarer, **når** visningen forsøger at hente tal, **så** vises en forståelig fejlbesked, og ingen gamle eller opfundne tal vises.
+6. **Givet** en ny, rettet eller slettet booking eller en ny rating, **når** hotelledelsen trykker på "Opdater", **så** indgår ændringen i tallene, og de valgte dropdowns er uændrede.
+7. **Givet** at API'et ikke svarer, **når** visningen forsøger at hente tal, **så** står der "Kunne ikke hente tallet", og ingen gamle eller opfundne tal vises.
 8. **Givet** en booking med indtjekning i 2028, **når** hotelledelsen vælger år 2028 og februar, **så** gælder belægningsgrad, kundetilfredshed, RevPAR og ADR 1.-29. februar 2028, og belægningsgraden regnes ud fra 6206 tilgængelige værelsesnætter (214 × 29).
 9. **Givet** nøgletalsvisningen, **når** hotelledelsen vil afgrænse tallene, **så** sker det kun med de to dropdowns, og der er ingen datovælger.
-10. **Givet** et valgt år uden barsalg, **når** visningen opdateres, **så** viser Helene Christines tal "ingen data" og ikke en systemfejl.
+10. **Givet** et valgt år uden barsalg, **når** visningen opdateres, **så** viser Helene Christines tal "Ingen data" og ikke en systemfejl.
+11. **Givet** at demo-datasættet er indlæst, **når** hotelledelsen åbner visningen, **så** har belægningsgrad, kundetilfredshed, RevPAR og ADR værdier under "Standard", og der står "Indeholder demodata".
+12. **Givet** at demo-datasættet er fjernet igen, **når** visningen opdateres, **så** er teksten "Indeholder demodata" væk, og tallene er de samme som før indlæsningen.
 
 ---
 
@@ -106,23 +113,29 @@ Som hotellets IT ønsker jeg, at ugyldige værdier afvises med 400 i det eksiste
 
 ### Edge Cases
 
-- **Ren opstart uden bookinger og ratings**: Belægningsgrad og RevPAR er 0, ADR er tom, og kundetilfredshed har 0 ratings og et tomt gennemsnit. Frontenden skal vise det som "ingen data" og må ikke opfinde tal.
-- **År uden data**: Årets indtjening og barsalget giver 404 for et år uden data, som i version 1. Frontenden viser det som "ingen data" og ikke som en systemfejl.
+- **Ren opstart uden bookinger og ratings**: API'et svarer som i version 1: belægningsgrad og RevPAR er 0, ADR er tom, og kundetilfredshed har 0 ratings og et tomt gennemsnit. Frontenden viser "Ingen data" ved alle fire og må ikke opfinde tal.
+- **År uden data**: Årets indtjening og barsalget giver 404 for et år uden data, som i version 1. Frontenden viser "Ingen data" og ikke en systemfejl.
+- **RevPAR uden indtjening, men med belagte nætter**: En booking kan have tjekket ind før perioden og stadig bo i den. Så er `occupied_room_nights` over 0, og RevPAR vises som det tal, API'et svarer, også hvis det er 0,00 DKK.
 - **Periode i forkert rækkefølge**: `start_date` efter `end_date` giver stadig 400, som i version 1.
 - **Land uden navn**: En booking uden land tæller stadig som "Ukendt" og indgår i totalerne (AC-08.4).
 - **Flere på førstepladsen**: Hvis flere værelsestyper eller lande tjener nøjagtig lige meget, viser frontenden dem alle som dem, der tjener mest.
-- **Ens sorteringsværdier ved sammenligning**: Rækker med nøjagtig samme sorteringsværdi må stå i en anden indbyrdes rækkefølge end i version 1. Alle andre rækkefølger skal være ens.
+- **Ens sorteringsværdier**: Version 1 har ingen regel for rækker med nøjagtig samme sorteringsværdi. I startdata gælder det kun gæster pr. land (N1), hvor fem par lande har samme antal ophold, men bookinger kan give det samme i de andre lister. FR-029 fastlægger rækkefølgen. Alle andre rækkefølger skal være som i version 1.
 - **Sortering efter tekst**: Lister, der er sorteret efter navn, skal stå i samme rækkefølge som i version 1, også ved store og små bogstaver og danske tegn.
 - **Id mellem de to grænser**: Et id mellem 2.147.483.648 og 4.294.967.295 var gyldigt i version 1 og gav 404, hvis det ikke fandtes. Nu giver det 400 (FR-021).
 - **Pris, der først bliver for stor efter afrunding**: 9.999.999.999,995 DKK afvises med 400 og må ikke give 500.
 - **Eksisterende datavolumen fra version 1**: En maskine kan stadig have en MySQL-volumen liggende. Det nye system må ikke fejle på grund af den og må ikke bruge den. Dens bookinger og ratings flyttes ikke (FR-014).
 - **Valgt år med historiske ophold**: Vælges 2025 og "Hele året", viser årets indtjening (N6) også de historiske ophold, mens N1-N5 kun viser nye bookinger, fordi ophold ikke har datoer. FR-007 kræver, at forskellen står ved tallene.
+- **Totaler med demodata**: Så længe demo-datasættet er indlæst, stiger N1-N5 og totalen på 11234034,00 DKK under "Standard", ligesom ved enhver anden ny booking, og demo-bookingerne kommer også med i Tableau-eksporten. Kontroltal, referencesæt og Tableau-sammenligning køres derfor altid uden demodata.
+- **Demo-datasæt indlæst to gange**: Kommandoen må ikke give dubletter eller dobbeltbookinger. Den fortæller, at datasættet allerede er indlæst.
+- **Demo-datasæt og eksisterende bookinger**: Indlæsningen må ikke ændre eksisterende bookinger, og en booking, der overlapper en af dem, oprettes ikke. Omvendt kan en demo-booking give 409 for en ny booking på samme værelse og datoer.
+- **Fjernelse af demo-datasæt**: Kun demo-bookinger og deres ratings fjernes. Findes der ingen, sker der ingenting, og det er ikke en fejl.
+- **`HISTORIK_AAR` er indeværende år**: Kommandoen afviser at indlæse datasættet, fordi det ellers ville ændre årets indtjening for de historiske data.
 
 ## Requirements *(mandatory)*
 
 ### De 13 beregninger
 
-Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne er taget fra hotellets krav og fra `tableau/dashboard/BYGGEVEJLEDNING.md`. Alle 13 har allerede et endpoint i kontrakten fra version 1, og **der mangler derfor ikke noget nyt endpoint**. Det, der mangler, er visningen i frontenden (FR-005 til FR-011) og reglerne for ugyldige værdier (FR-021 til FR-024).
+Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne er taget fra hotellets krav og fra `tableau/dashboard/BYGGEVEJLEDNING.md`. Alle 13 har allerede et endpoint i kontrakten fra version 1, og **der mangler derfor ikke noget nyt endpoint**. Det, der mangler, er visningen i frontenden (FR-005 til FR-011), reglerne for ugyldige værdier (FR-021 til FR-024), det valgfri demo-datasæt (FR-026 til FR-028) og den faste rækkefølge ved lige værdier (FR-029).
 
 | Nr. | Beregning | Endpoint, der genbruges | Ved ren opstart |
 |---|---|---|---|
@@ -154,9 +167,9 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 - **FR-005**: Frontenden SKAL have en visning til hotelledelsen med alle 13 beregninger.
 - **FR-006**: Frontenden SKAL hente alle tal fra REST API'et. Den MÅ IKKE beregne nøgletal selv, tale med databasen eller læse Tableau-filen. Den må kun formatere tallene til visning.
 - **FR-007**: Hvert tal SKAL vise, hvad det er, og hvilken periode eller hvilket år det gælder. Tal, der bygger på antagelser eller kun på nye bookinger, SKAL være markeret som det (BR-04, BR-06).
-- **FR-008**: Frontenden SKAL vise manglende data og API-fejl som forståelige beskeder og MÅ IKKE vise et tomt tal som 0.
+- **FR-008**: Frontenden SKAL vise "Ingen data", når et tal er tomt, når API'et svarer 404, når en liste er tom, og for belægningsgrad, RevPAR og ADR, når `occupied_room_nights` er 0. API-fejl SKAL vises som "Kunne ikke hente tallet". API'ets svar ændres ikke af denne regel, og frontenden beregner ikke noget for at anvende den.
 - **FR-009**: Frontenden SKAL have ét årsvalg og ét periodevalg som dropdowns og MÅ IKKE have en datovælger. Årsvalget SKAL have "Standard", som visningen starter med, samt de år, API'et har indtjening for, og indeværende år. Periodevalget SKAL have "Hele året" og de 12 måneder og gælder kun, når et år er valgt. Valgene virker som i tabellen "Årsvalg og periodevalg".
-- **FR-010**: En ændring i bookinger eller ratings SKAL kunne ses i nøgletalsvisningen ved næste opdatering uden caching (C-01).
+- **FR-010**: Frontenden SKAL hente tallene fra API'et ved åbning og genindlæsning, ved et nyt valg i en dropdown og ved tryk på knappen "Opdater", som bevarer de valgte dropdowns. Den MÅ IKKE opdatere automatisk. En ændring i bookinger eller ratings SKAL kunne ses ved næste hentning uden caching (C-01).
 - **FR-011**: Frontendens eksisterende funktioner til bookinger og ratings SKAL virke, som de gør i version 1.
 
 | Årsvalg og periodevalg | "Standard" (samme perioder som Tableau) | Valgt år og periode |
@@ -164,16 +177,16 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 | N1-N5 | Alle data, også historiske ophold | Kun nye bookinger, der tjekker ind i perioden |
 | N6 | 2025 (`HISTORIK_AAR`) | Det valgte år. Periodevalget gælder ikke |
 | N7-N10 | Indeværende år | Den valgte periode |
-| N11-N13 | 2025 (`HISTORIK_AAR`) | Det valgte år, og andre år end 2025 giver "ingen data". Periodevalget gælder ikke |
+| N11-N13 | 2025 (`HISTORIK_AAR`) | Det valgte år, og andre år end 2025 giver "Ingen data". Periodevalget gælder ikke |
 
 **Database (krav 3)**
 
-- **FR-012**: Systemet SKAL køre på en anden databasetype end MySQL. Valget og begrundelsen hører til i `plan.md` (constitution IV).
+- **FR-012**: Systemet SKAL køre på en anden databasetype end MySQL. Valget er PostgreSQL 18, og underviserens bekræftelse afventer. Begrundelsen hører til i `plan.md` (constitution IV).
 - **FR-013**: `db/01_schema.sql` og `db/02_data.sql` MÅ konverteres til den nye database. Værdierne MÅ IKKE ændres, og MySQL-originalerne SKAL kun bevares i git-tagget `v1-mysql`, som peger på commit `ba5bd83`.
 - **FR-014**: Skiftet SKAL ske uden tab af de leverede startdata i `db/`. Bookinger og ratings, der er oprettet i en kørende installation af version 1, flyttes ikke.
 - **FR-015**: For gyldige kald og for de fejlsvar, der ikke er nævnt i FR-021, SKAL API'ets svar være uændret: samme stier, statuskoder, felter, datatyper, værdier, rækkefølge og formater (beløb som tekst med 2 decimaler, procenter med 1 decimal, datoer som `YYYY-MM-DD`, tidspunkter som `YYYY-MM-DD HH:MM:SS`).
 - **FR-016**: Bookingreglerne fra version 1 SKAL virke uændret, også afvisning af dobbeltbooking med 409 (BR-10), kapacitet og sletning af ratings sammen med bookingen.
-- **FR-017**: Skiftet af database MÅ IKKE kræve ændringer i præsentationslaget eller forretningslogiklaget (constitution IV).
+- **FR-017**: Skiftet af database MÅ IKKE kræve ændringer i præsentationslaget eller forretningslogiklaget (constitution IV). Ændringer dér må kun skyldes de selvstændige krav i FR-021 og FR-029.
 - **FR-018**: Tableau-eksporten SKAL virke uændret: den henter kun fra REST API'et og skriver samme tabeller og kolonner med samme interval som i version 1.
 - **FR-019**: Hele systemet SKAL kunne starte fra ren opstart med `docker-compose up`, startdata SKAL indlæses automatisk, og data SKAL bevares mellem genstarter (constitution V).
 - **FR-020**: Kontrolberegningerne og dokumentationen SKAL passe til den nye database. Kontroltallene SKAL kunne genberegnes direkte i databasen, og ingen vejledning må beskrive MySQL som den database, systemet bruger.
@@ -183,7 +196,7 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 - **FR-021**: API'et SKAL afvise værdierne i tabellen "Ugyldige værdier" med 400 og det eksisterende fejlformat med koden `VALIDATION_ERROR`. De MÅ IKKE give 500.
 - **FR-022**: Gyldige grænseværdier SKAL fortsat accepteres. Et id på eller under grænsen, der ikke findes, giver fortsat 404 eller den fejl, version 1 gav for det felt.
 - **FR-023**: Et afvist kald MÅ IKKE ændre data, og svaret MÅ IKKE indeholde stack traces eller afsløre noget om databasen (NFR-10).
-- **FR-024**: Afvisningerne i FR-021 er den eneste tilladte ændring i API'ets adfærd og er en undtagelse fra FR-015.
+- **FR-024**: Afvisningerne i FR-021 og den faste rækkefølge i FR-029 er de eneste tilladte ændringer i API'ets adfærd og er undtagelser fra FR-015.
 
 | Ugyldige værdier | Gælder for | Grænse |
 |---|---|---|
@@ -196,6 +209,16 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 
 - **FR-025**: OpenAPI-kontrakten SKAL opdateres med grænserne i tabellen ovenfor, 400-svar på alle berørte endpoints og et nyt versionsnummer. Den SKAL stemme overens med API'et i begge retninger og være tilgængelig i Swagger UI (constitution III).
 
+**Demo-datasæt (valgfrit)**
+
+- **FR-026**: Systemet SKAL have et valgfrit demo-datasæt med bookinger og ratings i indeværende år, der giver belægningsgrad, kundetilfredshed, RevPAR og ADR værdier under "Standard". Det MÅ IKKE indlæses ved ren opstart, men kun med en dokumenteret kommando, og det SKAL kunne fjernes igen med en dokumenteret kommando.
+- **FR-027**: Demo-datasættet SKAL oprettes gennem REST API'et, så bookingreglerne gælder, og alle demo-bookinger SKAL være mærket i gæstenavnet. Frontenden SKAL vise "Indeholder demodata", så længe datasættet er indlæst.
+- **FR-028**: Demo-datasættet MÅ IKKE ændre de historiske data, barsalget eller årets indtjening for `HISTORIK_AAR`, og det MÅ IKKE tilføje nye felter i API'ets svar. Kontroltallene i SC-001 SKAL være de samme, uanset om datasættet er indlæst, og det gælder de tal, der kontrolleres uden bookinger: 1000 ophold, 5379 nætter, 11234034,00 DKK for 2025 og alle bartal.
+
+**Rækkefølge ved lige værdier**
+
+- **FR-029**: Rækker med nøjagtig samme sorteringsværdi SKAL sorteres stigende efter navn (land, gruppe, drik eller kategori), så API'et giver samme rækkefølge hver gang, uafhængigt af databasens sprogindstilling. Reglen SKAL stå i kontrakten.
+
 ### Krav fra version 1, som denne specifikation ændrer
 
 | Version 1 | Ændring |
@@ -204,6 +227,7 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 | Afsnit 3.1 "A browser-based frontend for booking management" | Udvides med FR-005 til FR-011 |
 | FR-12 og AC-14.4 (fejlsvar) | Udvides med FR-021 til FR-025 |
 | Bemærkningen i `plan.md` og `tasks.md` om, at `db/01` og `db/02` ikke må ændres | Erstattes af FR-013 |
+| BR-08 "none are invented" og beslutningerne B-20 og O-12 om ingen demodata | Gælder stadig for startdata. Undtagelsen er det valgfri, mærkede demo-datasæt i FR-026 til FR-028 |
 
 ### Uden for scope
 
@@ -214,6 +238,7 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 - Datoer på historiske ophold eller andre ændringer af de leverede data.
 - Flytning af bookinger og ratings fra en kørende installation af version 1.
 - Datovælger i frontenden.
+- Automatisk opdatering af tallene i frontenden.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -221,23 +246,25 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 - **Kontroltal**: De faste tal, der viser, at data er uændret: 1000 ophold, 5379 nætter, 11234034,00 DKK, 13448640,34 DKK og de fire procentandele.
 - **Referencesæt**: En fast liste af API-kald med faste parametre og en fast rækkefølge af bookinger og ratings. Omfatter alle GET-endpoints og de eksisterende fejlsvar. Svarene optages mod version 1 og bruges til sammenligningen.
 - **Startdata**: Lande, drikke, kategorier, værelsestyper, 1000 historiske ophold og 214 værelser. Ingen bookinger og ingen ratings.
+- **Demo-datasæt**: Opdigtede, mærkede bookinger og ratings i indeværende år. Er ikke en del af startdata og indgår ikke i kontroltallene.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: Kontroltallene er identiske før og efter skiftet, uden tolerance: 1000 ophold, 5379 nætter, 11234034,00 DKK i værelsesindtjening, 13448640,34 DKK i baromsætning, cocktails 52,8 % og kaffe 47,2 % af omsætningen, cocktails 34,5 % og kaffe 65,5 % af antal solgte.
-- **SC-002**: 100 % af kaldene i referencesættet giver samme svar som version 1, bortset fra `created_at` og `updated_at` og de tilladte ændringer i FR-021.
+- **SC-002**: 100 % af kaldene i referencesættet giver samme svar som version 1, bortset fra `created_at` og `updated_at` og de tilladte ændringer i FR-021. Lige rækker i svarene fra version 1 sorteres først efter reglen i FR-029, og 10 gentagelser af samme kald giver samme rækkefølge.
 - **SC-003**: Antal rækker er uændret: 20 lande, 2 kategorier, 30 drikke, 8 værelsestyper, 1000 ophold og 214 værelser, og 0 tegn i gæstenavne er ændret i forhold til de leverede data.
 - **SC-004**: IT kan hente 13 af 13 beregninger fra API'et, og hver af dem kan findes i OpenAPI-kontrakten.
-- **SC-005**: Hotelledelsen kan se 13 af 13 beregninger i frontenden inden for 5 sekunder efter åbning og efter et nyt valg i en dropdown, og alle 13 har samme værdi som API'et.
+- **SC-005**: Hotelledelsen kan se 13 af 13 beregninger i frontenden inden for 5 sekunder efter åbning, efter et nyt valg i en dropdown og efter tryk på "Opdater", og alle 13 har samme værdi som API'et eller "Ingen data" efter reglen i FR-008. 0 tal vises som 0, når reglen siger "Ingen data".
 - **SC-006**: Browserens netværkslog viser 0 kald til andet end frontendens egne filer og REST API'et.
 - **SC-007**: 100 % af værdierne i tabellen "Ugyldige værdier" giver 400 med det eksisterende fejlformat på alle endpoints, der tager feltet, 0 giver 500, og antal rækker i databasen er uændret bagefter.
 - **SC-008**: Kontrakttesten består i begge retninger, så alle endpoints i API'et står i kontrakten og omvendt, og Swagger UI viser de nye grænser.
 - **SC-009**: Fra en maskine uden containere og datavolumener starter alle dele med `docker-compose up` inden for 5 minutter, uden andre manuelle trin end den dokumenterede `.env`-fil.
 - **SC-010**: Tableau-eksporten skriver de samme 16 tabeller med de samme kolonner og værdier som version 1, bruger højst 30 sekunder (NFR-09), og dashboardet er ikke ændret.
 - **SC-011**: Svartiderne fra version 1 holder: nøgletal højst 2 sekunder og booking-CRUD højst 500 millisekunder (NFR-09).
-- **SC-012**: Converge-resultatet angiver for hvert krav FR-001 til FR-025 og SC-001 til SC-011, om det er opfyldt, og hvordan det er kontrolleret mod det kørende system.
+- **SC-012**: Converge-resultatet angiver for hvert funktionelt krav og hvert af de øvrige succeskriterier, om det er opfyldt, og hvordan det er kontrolleret mod det kørende system.
+- **SC-013**: Med demo-datasættet indlæst er belægningsgraden for indeværende år mindst 1,0 %, og kundetilfredshed, RevPAR og ADR har værdier. 1000 ophold, 5379 nætter, 11234034,00 DKK for 2025 og alle bartal er uændrede, og efter fjernelse viser alle 13 beregninger samme værdier som før indlæsningen.
 
 ## Assumptions
 
@@ -250,7 +277,10 @@ Tabellen er kravet til API'et (krav 1) og til frontenden (krav 2). Beregningerne
 - **Barsalg og år**: Alt barsalg regnes som Helene Christines og hører til 2025 (`HISTORIK_AAR`), som i version 1 (BR-04, BR-06).
 - **Heltalsgrænsen**: Godkendt den 2026-11-02: højeste id er 2.147.483.647, fordi det er den almindelige grænse for et heltal i databaser. Version 1 tillod id'er op til 4.294.967.295, men systemet har ingen id'er i nærheden af grænsen.
 - **Prisgrænsen**: Godkendt den 2026-11-02: højeste pris er 9.999.999.999,99 DKK, som er det højeste, version 1 kan gemme, så ingen gyldig pris bliver afvist.
-- **Betydningen af dropdowns**: "Standard" i årsvalget, månederne i periodevalget og tabellen "Årsvalg og periodevalg" er en tolkning af beslutningen om ét årsvalg og ét periodevalg, som gruppen bør bekræfte. "Standard" er nødvendig, fordi Tableaus perioder bruger forskellige år for forskellige tal, og ét valgt år derfor ikke kan vise dem alle.
+- **Betydningen af dropdowns**: Bekræftet af gruppen den 2026-11-02: årsvalget har "Standard", de år API'et har indtjening for, og indeværende år, og periodevalget har "Hele året" og de 12 måneder. Valgene virker som i tabellen "Årsvalg og periodevalg". "Standard" er nødvendig, fordi Tableaus perioder bruger forskellige år for forskellige tal, og ét valgt år derfor ikke kan vise dem alle.
 - **Ren opstart**: Ren opstart betyder ingen containere og ingen datavolumener. Den dokumenterede kopi af `.env.example` til `.env` tæller ikke som et manuelt trin, fordi hemmeligheder ikke må ligge i git (constitution VI).
 - **Tidsgrænser**: Godkendt den 2026-11-02: første opstart tager højst 5 minutter, og frontenden viser tallene inden for 5 sekunder. Hotellet har ikke selv angivet tal.
 - **Constitution**: Constitution v2.0.0 antages at være godkendt af hele gruppen. Den lister godkendelsen som et åbent punkt.
+- **Sammenligningen med version 1**: Gruppen oplyser, at 3 af 58 kald afveg fra `v1-mysql` kun i rækkefølge. Sammenligningen ligger ikke i repoet, så tallet skal genskabes i Converge.
+- **Demodata**: Grænsen på mindst 1,0 % i SC-013 er en standardværdi, der sikrer et synligt tal. Hotellet har ikke angivet et tal. Tallene i demo-datasættet er opdigtede og må ikke præsenteres som hotellets egne.
+- **Databasevalg**: Gruppen har valgt PostgreSQL 18 og regner den som en anden databasetype end MySQL. Underviserens bekræftelse afventer, så valget er ikke endeligt godkendt.
