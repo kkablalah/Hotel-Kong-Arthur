@@ -1,381 +1,222 @@
-# Hotel Kong Arthur
+# Hotel Kong Arthur · uge 2
 
-Studieprojekt om bookingadministration og visualisering af hotel- og bardata.
-Uge 2 bruger PostgreSQL i booking-backendens nye Compose-stack. Den gamle
-MySQL-POC og dens containere/volume bevares separat til præsentationen.
+Uge 2 er en bookingløsning med en særskilt analysefane for importerede hotel- og bardata. Backend og frontend kører i Docker Compose, og uge 2 bruger PostgreSQL. Projektet indeholder også uge 1's MySQL-baserede booking-POC; den starter med sin egen Compose-fil og har sin egen databasevolumen.
 
-**Gruppe:** Kenadid, Jonas, Jazmin, Nikolaj og Jannick.
+## Uge 1 og uge 2
 
-## Status
-
-Status kontrolleret 2. november 2026. Denne ZIP-mappe indeholder uge 2-kode,
-dokumentation og den bevarede MySQL/Tableau-POC. Mappen har ikke Git-historik,
-så branch- og commitforhold er ikke kontrolleret her. POC-opstartsvejledningen
-gælder `compose.yaml`; uge 2-vejledningen gælder `compose.uge2.yaml`.
-
-| Del | Nuværende status |
-|---|---|
-| Bookingadministration | Opret, vis, ret og slet gennem browseren og API'et. |
-| PostgreSQL i uge 2 | Gemmer uge 2-bookinger i `hka-uge2_postgres_data`. |
-| Analyse-API i uge 2 | Leverer førsteversionsberegninger fra de importerede PostgreSQL-tabeller. |
-| MySQL-POC | Den gamle bookingdatabase og dens volumen bevares separat. |
-| Inputvalidering | Kontrollerer navn, e-mail, værelsesnummer, datoer og status. |
-| OpenAPI og Swagger UI | Dokumenterer booking- og analyse-endpoints. |
-| Docker Compose | `compose.yaml` bevarer MySQL-POC'en; `compose.uge2.yaml` starter uge 2-stakken. |
-| Tableau-forbindelse | WDC 2.3 er udvidet; hoteloversigt, baroversigt, hotelbeløb pr. land samt værelsestype/sæson vises korrekt. Manuel Refresh lykkedes for hoteloversigt, baroversigt og landefordeling. Øvrige tabeller er ikke færdigtestet. |
-| Dashboard | Den gamle workbook bruger regneark til hotel/bar og API til booking. Uge 2 har en separat analysefane. |
-
-Det samlede projekt er ikke færdigt. Uge 2-booking-CRUD og analyse-endpoints
-kører gennem PostgreSQL og repositories, regnearkene er importeret gentageligt,
-og analysefanen er implementeret. Brugeren har bekræftet de specifikke
-browserkontroller, der er registreret i [Converge](specs/Converge); andre filtre
-og Opdatér/genindlæsning er ikke bekræftet.
-
-## Teknologi og arkitektur
-
-- **Backend:** JavaScript, Node.js og Express.
-- **Database:** PostgreSQL 16 med `pg` i uge 2; MySQL 8.0 bevares til den gamle POC.
-- **Frontend:** HTML, CSS og JavaScript serveret af Nginx.
-- **Dokumentation:** OpenAPI i YAML og Swagger UI i Express.
-- **Analyse:** Tableau Public/Desktop og egen Web Data Connector 2.x.
-- **Drift:** Docker Compose.
-
-```mermaid
-flowchart TD
-    subgraph U2[Uge 2 · hka-uge2]
-      B[Frontend · bookinger og analyse] --> N[Nginx]
-      N --> RT[REST routes]
-      RT --> S[Booking- og analyseservices]
-      S --> R[Booking- og analyserepositories]
-      R --> P[(PostgreSQL · bookings, hotel_stays, drink_products)]
-      X[Regneark] --> I[Gentagelig importkommando]
-      I --> P
-    end
-    T[Tableau-dashboard] -. Hotel- og baroversigt bekræftet; øvrige test åbne .-> RT
-    subgraph POC[Bevaret gammel POC]
-      W[Tableau WDC · bookingdata] --> L[Nginx og Express API]
-      L --> M[(MySQL · bevaret data/volume)]
-    end
-```
-
-I uge 2 sender Nginx `/api/` til Express-ruter. Ruterne kalder services, som
-validerer input og styrer beregningsreglerne; services kalder repositories,
-der ejer al SQL og bruger uge 2-PostgreSQL. Importkommandoen indlæser
-regnearkene i separate tabeller. Tableau-WDC/MySQL-forbindelsen er den gamle
-POC. Samme WDC-teknik er udvidet med uge 2-tabeller; hotel- og baroversigter er
-bekræftet i Tableau for hoteloversigt, baroversigt, beløb pr. land og
-værelsestype/sæson; øvrige analysetabeller mangler kontrol.
-
-## Gammel MySQL-POC: opstart
-
-Dette afsnit gælder kun den gamle MySQL-POC. Uge 2 bruger `.env` fra
-`.env.example`; overskriv ikke den fil med MySQL-indstillinger. Hvis den gamle
-POC skal startes separat, læg dens eksisterende MySQL-indstillinger i en lokal
-`.env.mysql`-fil. Ved genbrug af den gamle MySQL-volume skal de oprindelige
-adgangskoder bevares.
-
-Forudsætninger: Docker Desktop er installeret og startet, og I har en kopi af
-POC-koden fra `Jazmin` eller en branch, hvor den er integreret.
-
-1. Åbn projektmappen i VS Code.
-2. Opret `.env.mysql` med MySQL-variablerne til den gamle POC:
-
-   ```dotenv
-   MYSQL_ROOT_PASSWORD=udskift_med_din_egen_root_adgangskode
-   MYSQL_PASSWORD=udskift_med_din_egen_app_adgangskode
-   MYSQL_USER=hoteluser
-   MYSQL_DATABASE=hotel_db
-   ```
-
-   `.env.mysql` er dækket af `.gitignore` og må ikke deles eller uploades.
-
-3. Kør i terminalen fra projektroden:
-
-   ```sh
-   docker compose --env-file .env.mysql -f compose.yaml up --build -d
-   ```
-
-4. Åbn brugerfladen og Swagger UI med adresserne nedenfor.
-
-MySQL kører internt i Docker-netværket. Der kræves ikke en ledig værtsport 3306.
-Tableau åbnes separat på brugerens computer og startes ikke af Compose.
-
-| Funktion | Adresse |
-|---|---|
-| Bookingbrugerflade | http://localhost:8080 |
-| Swagger UI | http://localhost:8080/api-docs/ |
-| API gennem Nginx | http://localhost:8080/api/bookings |
-| Direkte API | http://localhost:3000/api/bookings |
-| Backend healthcheck | http://localhost:3000/health |
-| Tableau-connector | http://localhost:8080/tableau.html |
-
-Repoet har flere Compose-filer med forskellige navne. Denne vejledning bruger
-udtrykkeligt `compose.yaml` fra POC'en.
-
-## Booking-API
-
-| Metode | Endpoint | Funktion |
+| | Uge 1 · POC | Uge 2 |
 |---|---|---|
-| GET | `/api/bookings` | Hent bookinglisten. |
-| GET | `/api/bookings/{id}` | Hent én booking. |
-| POST | `/api/bookings` | Opret en booking. |
-| PUT | `/api/bookings/{id}` | Erstat bookingens redigerbare felter. |
-| DELETE | `/api/bookings/{id}` | Slet en booking. |
+| Compose-fil | `compose.yaml` | `compose.uge2.yaml` |
+| Database | MySQL 8 | PostgreSQL 16 |
+| Frontend | Port 8080 | Port 8081 |
+| Backend-port på værten | 3000 | 3001 |
+| Data | Bookinger og eksempeldata fra MySQL-initfilen | Bookinger samt særskilt importerede hotel- og bardata |
 
-Inputfelter: `guestName`, `email`, `roomNumber`, `checkIn`, `checkOut` og `status`.
-Datoer sendes som `YYYY-MM-DD`; afrejse skal være efter ankomst.
+Uge 2 erstatter eller migrerer ikke uge 1. De to stacks har forskellige databaser, porte og Compose-projekter. Brug den relevante Compose-fil til den stack, du vil arbejde med.
 
-Status kan være `confirmed`, `cancelled`, `checked_in` eller `checked_out`.
-POST bruger `confirmed`, hvis status udelades. PUT kræver hele det redigerbare
-feltsæt, også status. Se request- og response-skemaer i Swagger UI.
+## Arkitektur
 
-Gyldig oprettelse returnerer 201, hentning/opdatering 200 og sletning 204.
-Ugyldige bookingfelter returnerer 400, ukendte booking-ID'er 404 og interne fejl
-500. Systemet kontrollerer endnu ikke, om værelset findes, eller om to bookinger
-overlapper; der er ingen implementeret 409-regel mod dobbeltbooking.
+Uge 2 har tre lag i backend:
 
-## Tableau og opdaterede data
+1. **Routes** modtager HTTP-kald, læser sti og filtre og sender resultat eller fejl tilbage.
+2. **Services** håndterer validering, bookingregler og analyseberegninger.
+3. **Repositories** udfører SQL mod PostgreSQL. SQL for booking og analyse ligger her.
 
-1. Start POC'en med Docker Compose.
-2. Åbn Tableau og vælg **Web Data Connector** i den version, hvor gruppens
-   forbindelse er afprøvet.
-3. Indtast `http://localhost:8080/tableau.html` for den gamle POC.
-4. Klik **Hent data til Tableau**, og vælg tabellen **Hotellets bookinger**.
-5. Brug **COUNT(Booking ID)** til at vise antal bookinger.
-6. Efter ændringer: vælg det relevante dataudtræk under **Data → Refresh**.
+Frontend er statiske HTML-, CSS- og JavaScript-filer serveret af Nginx. Nginx videresender `/api/` og `/api-docs/` til backend. Docker Compose starter PostgreSQL, backend og frontend; backend venter på PostgreSQLs healthcheck, og frontend venter på backendens healthcheck. PostgreSQL er kun tilgængelig internt på Compose-netværket. Frontend og backend har henholdsvis værtsport 8081 og 3001.
 
-Bookingtabellen sender Booking ID, Værelsesnummer, Ankomst, Afrejse, Antal
-nætter og Status. Antal nætter beregnes som afrejse minus ankomst. Gæstens navn
-og e-mail sendes ikke til Tableau gennem denne connector. Den samme WDC-fil
-tilbyder også uge 2-analysetabeller, når den åbnes via uge 2-adressen nedenfor.
+Regnearksimporten er et separat Python-script, som validerer XLSX-filerne og skriver direkte til PostgreSQL. Den går uden om API'ets routes, services og repositories.
 
-Forbindelsen er demonstreret med et bookingtal, der ændrede sig fra 3 til 4 efter
-oprettelse og manuel Refresh. Det er et extract, ikke automatisk realtidsdata.
-COUNT(Booking ID) tæller alle hentede bookinger, herunder aflyste, medmindre der
-tilføjes et filter. Antal bookinger er ikke belægningsprocent.
+## Start uge 2 fra en frisk kopi
 
-WDC 2.x er en ældre connector-generation. Gruppens præcise Tableau-version skal
-registreres og gentestes, før forbindelsen betragtes som reproducerbar på andre
-computere. Tableau Public kan ikke selv opdatere publicerede WDC-extracts.
-Automatisk opdatering kræver en særskilt, kompatibel opsætning og test.
-Se [Tableaus WDC-dokumentation](https://help.tableau.com/current/pro/desktop/en-gb/examples_web_data_connector.htm).
+Forudsætninger: Git, Docker Desktop med Compose-plugin og Python 3. Kommandoerne herunder er skrevet til macOS/Linux-shell og køres fra projektroden. Python-scriptet bruger kun Python-standardbiblioteket.
 
-## Dashboard og datakilder
+### 1. Hent projektet
 
-De viste hotel- og baranalyser bruger datasættene
-`international_names_with_rooms_1000.xlsx` og `drinks_menu_with_sales.xlsx`.
-De ligger under `Datasets/` på main og er ikke med i den gennemgåede Jazmin-kopi.
-
-Dashboardet viser blandt andet landekort, opholdslængder, omsætning pr.
-værelsestype/sæson, omsætning pr. drik, bartotal og et separat API-bookingtal.
-Ændringer i booking-API'et opdaterer ikke automatisk regnearksdiagrammerne.
-Lande- og sæsonfelter findes endnu ikke i API'ets bookingmodel.
-
-Den lokale Tableau-workbook skal deles som `.twbx` med gruppen; den findes ikke
-i de gennemgåede commits. En delt workbook viser de gemte data. Ny hentning fra
-API'et kræver, at modtagerens POC kører, og at Tableau-versionen understøtter
-connectoren. `localhost` betyder altid den computer, programmet kører på.
-
-### Uge 2-analyser i Tableau
-
-Uge 2 genbruger den eksisterende Tableau Web Data Connector 2.3 i
-`frontend/tableau.html` og `frontend/tableau.js`. Efter start af uge 2-stacken
-åbnes denne præcise connectoradresse i Tableau:
-
-```text
-http://localhost:8081/tableau.html
-```
-
-Den aktuelle synlige connectorversion er `HKA-U2-2026.11.02.4`; HTML-siden
-loader `tableau.js?v=HKA-U2-2026.11.02.4`, så den nye kode bruger en ny
-script-URL. Siden viser både sideversion og **JavaScript version loaded**.
-Under datahentning viser statuslinjen version og tabel-ID; fejl fanget af
-connectoren viser samme oplysninger i fejlteksten.
-
-Vælg **Hent data til Tableau**. Connectoren bevarer bookingtabellen og tilbyder
-separate API-baserede tabeller for hoteloversigt, ophold pr. land, hotelbeløb
-pr. land, værelsestype/sæson, top-land, top-værelsestype, gennemsnitlig
-`Days Rented`, baroversigt, beløb pr. drink og cocktail/kaffe-andele. De hentes
-fra `/api/analysis/` gennem uge 2's Nginx-proxy. Tableau modtager de beregnede
-værdier; connectoren genberegner dem ikke.
-
-Hotellets totalbeløb og barens totalbeløb ligger hver i en særskilt én-rækkes
-tabel. Grupperede tabeller indeholder kun gruppebeløb; de gentager ikke totalen
-på hver række. Brug derfor ikke en gruppetabel som kilde til at summere en
-gentaget total. Førsteversionsbeløb er POC-antagelser uden dokumenteret år.
-
-Den aktuelle opdateringsmetode er manuel **Data → [dataudtræk] → Refresh** i
-Tableau efter at uge 2-API'et er opdateret. Automatisk refresh er ikke afklaret
-med lærerne. WDC/connectoren og API-schemas er implementeret, men forbindelsen
-er ikke markeret færdig. En teknisk harness har efter seneste frontend-build kørt
-connectorens `getData` mod alle ti faktiske API-svar; alle leverede forventede
-rækker og felttyper. Manglende felter giver en fejl med version og tabel-id i
-stedet for en 0-værdi. Den oprindelige hoteloversigtsfejl skyldtes et ekstra
-`data`-niveau i rækkemappingen og er rettet.
-
-**Brugerbekræftet Tableau-test:** I workbooken `Hotel-Kong-Arthur-uge2-API`
-med connectorversion `HKA-U2-2026.11.02.4` vises hoteloversigten korrekt:
-1.000 ophold, 11.234.034 kr. og gennemsnit 5,379. Baroversigten viser korrekt
-30 produkter, 179.958 enheder og 13.448.640,34 kr. Hotelbeløb pr. land samt
-hotelbeløb pr. værelsestype/sæson vises også korrekt. Manuel Refresh lykkedes
-uden fejl for hoteloversigt, baroversigt og landefordeling. De øvrige Tableau-
-tabeller er ikke færdigtestet. U2-T8 er derfor delvist testet, ikke færdig.
-
-## Stop, log og bevarelse af data
+Indsæt gruppens GitHub-klonadresse i stedet for `<repo-url>`:
 
 ```sh
-docker compose -f compose.yaml ps
-docker compose -f compose.yaml logs --tail=100
-docker compose -f compose.yaml down
+git clone <repo-url> Hotel-uge2
+cd Hotel-uge2
 ```
 
-`down` bevarer databasevolumen. Brug ikke `down -v`, hvis bookingerne skal bevares.
-`mysql/init.sql` opretter skema og eksempelbookinger ved initialisering af en tom
-databasevolumen. Det genindlæser ikke regneark ved hver opstart. Brug samme
-projektmappe/Compose-projektnavn for at genbruge den eksisterende volumen.
+Datasættene forventes i `Datasets/`: `international_names_with_rooms_1000.xlsx` og `drinks_menu_with_sales.xlsx`.
 
-## Uge 2: PostgreSQL-bookingprototype
+### 2. Opret lokal miljøfil
 
-Uge 2 bruger en separat Compose-fil og project name `hka-uge2` med den named
-volume `hka-uge2_postgres_data`. Databasen offentliggør ingen værtsport. Backend
-og frontend bruger egne værtsporte, så den gamle POC fortsat kan køre.
+```sh
+cp .env.example .env
+```
 
-1. Kopiér `.env.example` til `.env`, og sæt en unik lokal `POSTGRES_PASSWORD`.
-   `.env` er udelukket fra Git; del eller upload den ikke.
-2. Start uge 2-tjenesterne:
+Åbn `.env`, og sæt en lokal værdi til `POSTGRES_PASSWORD`. De øvrige eksempelværdier er `POSTGRES_DB=hka_uge2` og `POSTGRES_USER=hka_uge2`. `.env` er udelukket fra Git; del eller upload den ikke.
 
-   ```sh
-   docker compose --env-file .env -f compose.uge2.yaml up --build -d
-   ```
+### 3. Start tjenesterne
 
-| Funktion | Uge 2-adresse |
-|---|---|
-| Bookingbrugerflade | <http://localhost:8081> |
-| Analysefane | <http://localhost:8081/#analysis> |
-| Booking-API gennem Nginx | <http://localhost:8081/api/bookings> |
-| Direkte booking-API | <http://localhost:3001/api/bookings> |
-| Swagger UI | <http://localhost:8081/api-docs/> |
-| Backend healthcheck | <http://localhost:3001/health> |
+```sh
+docker compose --env-file .env -f compose.uge2.yaml up --build -d
+```
 
-Kontrollér tjenesterne med:
+Vent på at tjenesterne er startet, og kontrollér status:
 
 ```sh
 docker compose --env-file .env -f compose.uge2.yaml ps
 ```
 
-Bookingskemaet og tabellerne til regnearksimport oprettes fra
-`postgres/init.sql` på en tom PostgreSQL-volume. Backend-SQL ligger i
-bookingrepository; validering og bookingregler ligger fortsat i servicen.
+Fortsæt, når `postgres` og `backend` er `healthy`, og `frontend` er `running`.
 
-Uge 2-backenden bruger PostgreSQL, mens den gamle POC fortsat bruger sin
-MySQL-container og data. Der er ikke migreret MySQL-bookinger. Regnearksimporten
-skriver til `hotel_stays` og `drink_products`; de importerede hotelophold er
-adskilt fra browserens `bookings`, fordi kilden ikke indeholder bookingdatoer
-eller værelsesnumre. Ingen datoer, kalenderår eller sælgere tilføjes.
+### 4. Importér analysedata
 
-### Importér regneark til uge 2
-
-Kør fra projektroden, mens uge 2 PostgreSQL er startet:
+Kør først, når PostgreSQL er startet:
 
 ```sh
 python3 scripts/import_datasets.py
 ```
 
-Scriptet bruger eksplicit `compose.uge2.yaml` og containerens PostgreSQL-
-forbindelse. Det kontrollerer kolonner, celletyper, obligatoriske værdier og
-forventet rækkeantal før import. Fejl rapporteres med fil og Excel-rækkenummer,
-og ugyldige kilderækker importeres ikke. Proveniensen er kildefil, ark og
-Excel-rækkenummer; genkørsel opdaterer samme kilderække uden dubletter, mens
-identiske værdier på forskellige rækker forbliver særskilte. De oprindelige
-celleværdier gemmes i `raw_values` ved siden af de typede databasefelter.
+Scriptet kontrollerer kolonner, celletyper, obligatoriske værdier og antal rækker. Det forventer 1.000 hotelrækker og 30 drinkprodukter. Ved fejl afbryder det og viser fil, Excel-række og felt. Det importerer til uge 2's PostgreSQL og kontrollerer databasens antal og summer mod en beregning fra regnearkene. Gentagelse af kommandoen opdaterer samme kildeark/række uden dubletter.
 
-Verificeret 2. november 2026: 1.000 hotelrækker, `SUM(Price) = 11.234.034,00
-kr.`; 30 barprodukter, 179.958 solgte enheder og `SUM(Price × Units Sold) =
-13.448.640,34 kr.` Databasetallene blev sammenholdt med en uafhængig beregning
-fra XLSX-cellerne. Kommandoen blev kørt to gange med samme rækkeantal og
-summer. Booking-CRUD blev derefter kontrolleret igen; testbookingen blev
-slettet. Frontendens analysefane bruger relative `/api/analysis/`-kald og
-formaterer beløb i danske kroner med to decimaler. Brug ikke `down -v` eller
-prune-kommandoer; behold begge datavolumener.
+### 5. Kontrollér installationen
 
-### Analyse-endpoints
+Åbn adresserne nedenfor. Backendens healthcheck og booking-API kan også kontrolleres fra terminalen:
 
-Alle endpoints bruger importerede PostgreSQL-data og returnerer `dataBasis`,
-POC-antagelser, aktive filtre og beregningsresultat. Beløb er decimalstrenge i
-DKK med to decimaler. Hotelarkets `Price` behandles som samlet pris pr.
-registreret ophold; drinkarkets `Price` behandles som stykpris. Ingen endpoint
-kalder beløb årsomsætning eller Helenes salg, og der beregnes ikke belægning.
+```sh
+curl -fsS http://localhost:3001/health
+curl -fsS http://localhost:8081/api/bookings
+```
 
-| Endpoint | Indhold |
+`/health` er tilgængelig via backend-porten 3001. Frontendens Nginx videresender `/api/` og `/api-docs/`, men ikke `/health`.
+
+| Funktion | Adresse |
 |---|---|
-| `/api/analysis/hotel/summary` | Samlet `SUM(Price)`, registrerede ophold og gennemsnitlig `Days Rented`. |
-| `/api/analysis/hotel/stay-counts-by-country` | Rækkeantal pr. land. |
-| `/api/analysis/hotel/revenue-by-country` | `SUM(Price)` og opholdstal pr. land. |
-| `/api/analysis/hotel/revenue-by-room-type-season` | Beløb pr. værelsestype og kildens sæson. |
-| `/api/analysis/hotel/top-revenue?groupBy=country` | Land(e) med højest samlet beløb; medtager delte førstepladser. `groupBy=roomType` giver rangering pr. værelsestype. |
-| `/api/analysis/hotel/average-stay-length` | Gennemsnitlig `Days Rented` pr. registreret række. |
-| `/api/analysis/bar/summary` | Samlet `Price × Units Sold`, produktantal og antal solgte enheder. |
-| `/api/analysis/bar/products` | Omsætning pr. drink. |
-| `/api/analysis/bar/category-shares` | Cocktail-/kaffeandel efter `Units Sold`. |
+| Frontend og bookinger | <http://localhost:8081/> |
+| Analysefane | <http://localhost:8081/#analysis> |
+| Swagger UI | <http://localhost:8081/api-docs/> |
+| Booking-API gennem Nginx | <http://localhost:8081/api/bookings> |
+| Analyse-API gennem Nginx | <http://localhost:8081/api/analysis/hotel/summary> |
+| Booking-API direkte | <http://localhost:3001/api/bookings> |
+| Backend healthcheck | <http://localhost:3001/health> |
+| Tableau Web Data Connector | <http://localhost:8081/tableau.html> |
 
-Hotelendpoints accepterer relevante filtre `country`, `roomType` og `season`;
-barens summary og produktliste accepterer `category`. Filterværdier valideres
-mod de importerede værdier. Ukendte filtre/værdier giver HTTP 400. Et gyldigt
-filter uden match returnerer nulmål eller tom liste. OpenAPI-eksempler og
-fejlsvar findes i Swagger UI: <http://localhost:8081/api-docs/>.
+> **Frisk-clone-kontrol:** Trinene ovenfor er dokumenteret ud fra Compose-, miljø- og importfilerne. En fuld opstart og import fra en ny Git-clone er ikke registreret som testet. Markér ikke den kontrol som bestået, før den er gennemført.
 
-Analysesiden ligger i samme frontend som bookinglisten: vælg fanen **Analyser**
-eller åbn <http://localhost:8081/#analysis>. Der er kort, tabeller, filtre,
-opdateringsknap, indlæsningsstatus og fejl-/tomvisning. Datagrundlag og
-POC-antagelser hentes fra API-svarene. Drikkategorifilteret ændrer barbeløbet
-og drinklisten; kategoriandelene viser altid hele datasættet.
+## Booking-API
 
-Verificeret 2. november 2026 efter frontend-genbygning: analyseside, HTML,
-JavaScript og CSS blev hentet via HTTP med status 200; frontendkoden bruger
-relative API-kald og indeholder ingen hardkodede analysebeløb. Alle 10 analyse-
-API-kald returnerede 200. Booking-CRUD blev særskilt API-testet (POST 201,
-GET 200, PUT 200, DELETE 204), og testbookingen blev slettet.
+Alle ruter ligger under `/api/bookings`:
 
-**Dagens manuelle frontendtest (brugerbekræftet, Safari):** Med alle filtre
-vises hotelbeløb 11.234.034 kr., 1.000 ophold, gennemsnit 5,379 dage og
-baromsætning 13.448.640,34 kr. Filteret Suite + high viser 693.222 kr., 45
-ophold og 4,756 dage. Filteret Coffee viser baromsætning 6.343.884,91 kr.;
-hoteltallene forbliver uændrede. Nulstilling af filtre gendanner totalerne.
-Layoutrettelsen for beløb, kort og tabeller er kontrolleret i Safari og ifølge
-brugeren uploadet til GitHub. Disse konkrete visninger og handlinger er
-bekræftet; øvrige filterkombinationer, Opdatér-knappen og genindlæsning er
-fortsat ikke bekræftet. Manuelle observationer er brugerens, adskilt fra
-HTTP/API-resultaterne.
+| Metode | Rute | Funktion |
+|---|---|---|
+| GET | `/api/bookings` | Hent alle bookinger. |
+| GET | `/api/bookings/{id}` | Hent én booking. |
+| POST | `/api/bookings` | Opret booking; svarer med HTTP 201. |
+| PUT | `/api/bookings/{id}` | Opdatér bookingens felter. |
+| DELETE | `/api/bookings/{id}` | Slet booking; svarer med HTTP 204. |
 
-## Specifikationer og verifikation
+Bookingfelter er `guestName`, `email`, `roomNumber`, `checkIn`, `checkOut` og `status`. Datoer bruger `YYYY-MM-DD`; afrejse skal være efter ankomst. Status kan være `confirmed`, `cancelled`, `checked_in` eller `checked_out`. POST vælger `confirmed`, hvis status udelades. PUT kræver hele det redigerbare feltsæt. Ugyldige felter giver HTTP 400, ukendte ID'er 404 og interne fejl 500. Systemet kontrollerer ikke, om værelset findes, eller om bookinger overlapper.
 
-| Dokument | Formål |
+## Analyse-API og beregninger
+
+Analyse-API'et har ni endpoint-ruter. `/api/analysis/hotel/top-revenue` er én rute med `groupBy=country` eller `groupBy=roomType`.
+
+| Endpoint | Resultat |
 |---|---|
-| [Specify](specs/Specify) | Samlede krav, user stories og acceptkriterier. |
-| [Clarify](specs/Clarify) | Observeret løsning og åbne spørgsmål om data og beregninger. |
-| [Constitution](specs/Constitution) | Arkitekturprincipper og projektets fælles rammer. |
-| [Plan](specs/Plan) | Teknologi, arkitektur og næste udviklingstrin. |
-| [Tasks](specs/Tasks) | Opgaver med implementeringsstatus og resterende arbejde. |
-| [Converge](specs/Converge) | Samlet statuskontrol af implementering, tekniske tests, brugerbekræftelse og mangler. |
-| `Feature/Implement.md` på Jazmin | Tidligere rapporterede bookingtests. |
+| `/api/analysis/hotel/summary` | Samlet hotelbeløb, antal registrerede ophold og gennemsnitlig `Days Rented`. |
+| `/api/analysis/hotel/stay-counts-by-country` | Antal rækker pr. land. |
+| `/api/analysis/hotel/revenue-by-country` | Hotelbeløb og antal pr. land. |
+| `/api/analysis/hotel/revenue-by-room-type-season` | Hotelbeløb efter værelsestype og kildens sæson. |
+| `/api/analysis/hotel/top-revenue?groupBy=country` | Land(e) med højest beløb; delte førstepladser medtages. Brug `groupBy=roomType` for værelsestype. |
+| `/api/analysis/hotel/average-stay-length` | Gennemsnitlig `Days Rented`. |
+| `/api/analysis/bar/summary` | Antal produkter, solgte enheder og samlet barbeløb. |
+| `/api/analysis/bar/products` | Stykpris, antal solgte enheder og beløb pr. drink. |
+| `/api/analysis/bar/category-shares` | Cocktail-/kaffeandele efter antal solgte enheder. |
 
-Converge sammenholder krav med resultatet: Hvad virker, hvad er testet, og hvad
-mangler? En planlagt funktion må ikke markeres færdig uden kontrol.
+Hotelruterne accepterer filtre på `country`, `roomType` og `season`. Barens summary og produktliste accepterer `category`. Ukendte filtre og værdier giver HTTP 400. Et gyldigt filter uden resultater giver tomme grupper eller nulmål. Svarene indeholder datagrundlag, POC-antagelser, filtre og data; beløb leveres som DKK-decimaler med to decimaler.
 
-De historiske MySQL-POC-tests er beskrevet i `specs/Tasks` og
-`Feature/Implement.md`; de er ikke genkørt i denne Converge. Uge 2-importens
-rækkeantal og summer blev kontrolleret ved to importkørsler. Uge 2-browserens
-bekræftede handlinger står særskilt fra de tekniske API-tests i Converge.
+### Kilder og POC-antagelser
 
-## Resterende arbejde
+- `Datasets/international_names_with_rooms_1000.xlsx` indeholder 1.000 hotelrækker med blandt andet land, værelsestype, `Days Rented`, sæson og `Price`.
+- `Datasets/drinks_menu_with_sales.xlsx` indeholder 30 produkter med kategori, `Price (DKK)` og `Units Sold`.
+- Hotellets `Price` behandles som den samlede pris for ét registreret ophold. Drinkens `Price` behandles som stykpris, og omsætning beregnes som `Price × Units Sold`. Det er POC-antagelser.
+- Datasættene indeholder ikke et dokumenteret rapporteringsår eller salgsdato/sælger. Beløbene er derfor ikke årsomsætning eller Helenes salg. Der beregnes heller ikke belægning.
 
-- Afprøv de øvrige analysetabeller i Tableau; hoteloversigt, baroversigt, beløb pr. land og værelsestype/sæson er allerede brugerbekræftet.
-- Skaff daterede hotelrækker og aftal rapporteringsår/indregningsregel, før årsomsætning kan beregnes.
-- Skaff transaktionsdato og sælgeridentitet samt en dokumenteret identitetsregel, før Helenes salg eller kategoriandel kan beregnes.
-- Skaff værelses-ID, bookingdatoer/status, kapacitet og tilgængelighedsregler; aftal belægningsformel og periode før implementering.
-- Afklar den faktiske forretningsbetydning af `Price`; den nuværende betydning som samlet opholdsbeløb/stykpris er alene en POC-antagelse.
-- Gentag uge 2-opstart og import fra en frisk kopi, og kontrollér `.env.example`/`.gitignore` samt Tableau-workbook på en anden gruppedeltagers computer.
-- Browserbekræft øvrige analysefilterkombinationer og Opdatér/genindlæsning. De konkrete kontroller for alle filtre, Suite + high, Coffee, nulstilling og layout i Safari er brugerbekræftet; kategoriandele er teknisk kontrolleret mod kildedata, men browserkontrol af kategorivisningen er ikke registreret.
+Browserens bookinger gemmes i `bookings`. De importerede hotelrækker og drinkprodukter gemmes separat i `hotel_stays` og `drink_products`. De importerede hotelrækker er ikke bookingposter: kilden mangler bookingdatoer og værelsesnumre, og importen føjer dem ikke til. Uge 2 importerer heller ikke bookinger fra uge 1.
 
-Se [CONTRIBUTE.md](CONTRIBUTE.md) for samarbejde. Gruppen skal kunne forklare
-og gennemgå både AI-genereret kode og de valgte beregninger.
+## Tableau
+
+Åbn <http://localhost:8081/tableau.html> i Tableau som Web Data Connector, og vælg **Hent data til Tableau**. Connectoren tilbyder bookingtabellen og særskilte analysetabeller, der henter beregnede resultater fra uge 2-API'et. Samlede hotel- og bartotaler ligger i hver sin én-rækkes tabel; gruppetabeller indeholder ikke gentagne totaler.
+
+Når API-data er opdateret, opdatér Tableau-udtrækket manuelt via **Data → [dataudtræk] → Refresh**. Automatisk opdatering er ikke dokumenteret eller verificeret. Tableau-versionens reproducerbarhed på andre computere er heller ikke verificeret.
+
+## Teststatus og åbne punkter
+
+Status nedenfor bygger på resultater registreret i `specs/Tasks` pr. 2. november 2026; browserobservationer er brugerbekræftede.
+
+**Kontrolleret:**
+
+- Uge 2-importen blev kørt to gange mod den eksisterende stack. Begge gange blev der registreret 1.000 hotelrækker med `SUM(Price) = 11.234.034,00 kr.` og 30 drinkprodukter med 179.958 solgte enheder og `SUM(Price × Units Sold) = 13.448.640,34 kr.` Summerne matchede en beregning fra XLSX-cellerne.
+- API-kontrol dækkede booking-CRUD, valideringsfejl, ukendte booking-ID'er og persistens efter genstart af PostgreSQL. Testbookingen blev slettet.
+- Analyseberegninger og de ni endpoint-ruter blev kontrolleret mod kildedata/API-svar; Swagger UI svarede HTTP 200.
+- Brugerens frontendkontrol i Safari bekræftede standardtotaler: 11.234.034 kr., 1.000 ophold, 5,379 dage og 13.448.640,34 kr. for baren. `Suite + high` viste 693.222 kr., 45 ophold og 4,756 dage. `Coffee` viste 6.343.884,91 kr. i baromsætning med uændrede hoteltal. Nulstilling gendannede totalerne. Beløbs- og tabel-layout blev også kontrolleret i Safari.
+- Tableau viste hoteloversigt, baroversigt, hotelbeløb pr. land og pr. værelsestype/sæson. Manuel Refresh lykkedes for hoteloversigt, baroversigt og landefordeling. En teknisk harness dækkede alle ti analysetabel-varianter (top-ruten med begge `groupBy`-værdier).
+- GitHub-upload af layoutrettelsen er oplyst af brugeren; uploaden er ikke kontrolleret i denne dokumentation.
+
+**Ikke kontrolleret eller fortsat åbent:**
+
+- Fuld opstart og dataimport fra en helt frisk Git-clone.
+- Øvrige kombinationer af analysefiltre, analysefanens Opdatér-knap og genindlæsning af analysesiden.
+- De øvrige Tableau-analysetabeller og Tableau-connectorens reproducerbarhed på andre computere; automatisk refresh.
+- Årsomsætning, Helenes salg og belægning. De nødvendige datoer, sælgeroplysninger og kapacitetsdata/regler findes ikke i de nuværende kilder.
+
+Uge 2 er dermed implementeret og delvist verificeret; den samlede løsning og alle krav er ikke markeret færdige. Se [specs/Tasks](specs/Tasks) for taskstatus og testdetaljer.
+
+## Stop, start og bevar databasen
+
+Stop uge 2-tjenesterne:
+
+```sh
+docker compose --env-file .env -f compose.uge2.yaml stop
+```
+
+Start de stoppede containere igen uden at genbygge:
+
+```sh
+docker compose --env-file .env -f compose.uge2.yaml start
+```
+
+Eller fjern containerne/netværket, men behold named volume, og opret dem igen senere:
+
+```sh
+docker compose --env-file .env -f compose.uge2.yaml down
+docker compose --env-file .env -f compose.uge2.yaml up -d
+```
+
+Compose-projektnavnet er `hka-uge2`, og PostgreSQL-data ligger i volumen `hka-uge2_postgres_data`. `stop`, `start`, `down` og `up` sletter ikke den volumen. Brug **ikke** `down -v` eller volume-prune, hvis data skal bevares. Importen er idempotent og kan køres igen efter opstart.
+
+## Bevar uge 1's MySQL-POC separat
+
+Uge 1 bruger `compose.yaml`, MySQL og volumen `hotel_mysql_data` med et Compose-projektnavn, der afledes af projektmappen. Dens værtsporte er frontend 8080 og backend 3000; MySQL-port 3306 er kun intern i Compose-netværket. Uge 1's initfil er `mysql/init.sql`.
+
+Læg uge 1's egne MySQL-værdier i en lokal `.env.mysql` (filen er ignoreret af Git):
+
+```dotenv
+MYSQL_ROOT_PASSWORD=vælg_en_lokal_adgangskode
+MYSQL_PASSWORD=vælg_en_lokal_app_adgangskode
+MYSQL_USER=hoteluser
+MYSQL_DATABASE=hotel_db
+```
+
+Start kun uge 1 med:
+
+```sh
+docker compose --env-file .env.mysql -f compose.yaml up --build -d
+```
+
+Uge 1's frontend er <http://localhost:8080/>, Swagger er <http://localhost:8080/api-docs/>, og dens Tableau-connector er <http://localhost:8080/tableau.html>. Bevar dens data ved at bruge samme projektmappe/projektnavn og undgå `docker compose ... down -v`.
+
+De to `.env`-filer og de to PostgreSQL/MySQL-volumener er separate. Start ikke begge stacks på én gang, hvis værtsportene 8080 eller 3000 allerede er i brug.
+
+## Projektmateriale
+
+- [specs/Specify](specs/Specify): krav og acceptkriterier.
+- [specs/Clarify](specs/Clarify): afklaringer om data og beregninger.
+- [specs/Plan](specs/Plan): arkitektur og plan.
+- [specs/Tasks](specs/Tasks): opgaver, teststatus og åbent arbejde.
+- [specs/Converge](specs/Converge): samlet kontrolrapport.
+- [CONTRIBUTE.md](CONTRIBUTE.md): samarbejdsvejledning.
